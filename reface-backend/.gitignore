@@ -1,0 +1,6 @@
+images/*
+models/*
+output/*
+.venv
+__pycache__
+reface.db

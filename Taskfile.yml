@@ -1,0 +1,29 @@
+version: "3"
+
+tasks:
+  venv:
+    desc: Create virtual environment with uv
+    cmds:
+      - uv venv .venv
+
+  install-backend:
+    desc: Install backend dependencies
+    cmds:
+      - .venv/bin/uv sync
+
+  backend:
+    desc: Run FastAPI backend
+    cmds:
+      - .venv/bin/uv run reface-backend/app.py
+
+  frontend:
+    desc: Run Vite frontend
+    dir: reface-frontend
+    cmds:
+      - npm install
+      - npm run dev
+
+  dev:
+    desc: Run backend + frontend together
+    cmds:
+      - concurrently "uv run reface-backend/app.py" "cd reface-frontend && npm run dev"

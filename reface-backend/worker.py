@@ -199,6 +199,15 @@ class ImageProcessingWorker:
                 # Update process status to completed and upload result image
                 if not self.update_process_status(process_id, 'completed', output_path):
                     logger.error(f"Failed to update process {process_id} status")
+
+                # remove the source, target and result images
+                if os.path.exists(source_url):
+                    os.remove(source_url)
+                if os.path.exists(target_url):
+                    os.remove(target_url)
+                if os.path.exists(output_path):
+                    os.remove(output_path)
+                
                 
                 # Acknowledge the message
                 ch.basic_ack(delivery_tag=method.delivery_tag)

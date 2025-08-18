@@ -23,16 +23,19 @@ export const facebookAuthCallback = async (req: Request, res: Response, next: Ne
       const { password, ...userWithoutPassword } = user;
 
       // in this redirect url add token and refreshToken as query params
-      // const url = new URL(REDIRECT_URL);
-      // url.searchParams.set('token', token);
-      // url.searchParams.set('refreshToken', refreshToken);
-      // return res.redirect(url);
-      return res.json({
-        message: 'Login successful',
-        user: userWithoutPassword,
-        token,
-        refreshToken,
-      });
+
+      if (!REDIRECT_URL) {
+        return res.json({
+          message: 'Login successful. Redirect URL not found.',
+          user: userWithoutPassword,
+          accessToken: token,
+          refreshToken,
+        });
+      }
+      const url = new URL(REDIRECT_URL);
+      url.searchParams.set('accessToken', token);
+      url.searchParams.set('refreshToken', refreshToken);
+      return res.redirect(url.toString());
 
     });
 

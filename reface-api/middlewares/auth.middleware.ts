@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
+import { config } from '../lib/constants';
 import { findUserById } from '../services/user.service';
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
@@ -18,7 +19,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as { id: number };
+    const decoded = jwt.verify(token, config.jwt.accessToken.secret) as { id: number };
 
     // Check if user exists
     const user = await findUserById(Number(decoded.id));

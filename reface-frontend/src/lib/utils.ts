@@ -2,6 +2,9 @@ export function timeTaken(
     startedAt: string,
     endedAt: string
   ): string {
+    if (!startedAt || !endedAt) {
+      return 'Not started yet';
+    }
     // Parse input strings into Date objects (same day assumption)
     const start = new Date(startedAt);
     const end = new Date(endedAt);

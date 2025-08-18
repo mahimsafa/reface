@@ -7,6 +7,7 @@ import {
   updateImageProcess, 
   deleteImageProcess 
 } from '../controllers/process-image.controller';
+import { authenticate } from '../middlewares/auth.middleware';
 
 // Use memory storage; controller writes to disk
 const upload = multer({ storage: multer.memoryStorage() });
@@ -14,6 +15,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
 
 // List and get
+router.use(authenticate);
 router.get('', listImageProcesses);
 router.get('/:id', getImageProcess);
 

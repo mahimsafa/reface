@@ -1,6 +1,13 @@
-import { ProcessedImage, UploadRequest, ApiResponse, User, UsageData, CreditPackage, FilterOptions } from '../types';
-
-const API_BASE_URL = 'http://localhost:5000';
+import { 
+  ProcessedImage, 
+  UploadRequest, 
+  ApiResponse, 
+  User,
+  UsageData,
+  CreditPackage,
+  FilterOptions 
+} from '../types';
+import { config } from './config';
 
 // Define the backend process record type
 interface ProcessRecord {
@@ -21,9 +28,9 @@ interface ProcessRecord {
 // Convert backend process record to frontend ProcessedImage
 const mapToProcessedImage = (record: ProcessRecord): ProcessedImage => ({
   id: record.id.toString(),
-  sourceImage: `${API_BASE_URL}/${record.sourceImage}`,
-  targetImage: `${API_BASE_URL}/${record.targetImage}`,
-  resultImage: record.resultImage ? `${API_BASE_URL}/${record.resultImage}` : undefined,
+  sourceImage: `${config.apiUrl}/${record.sourceImage}`,
+  targetImage: `${config.apiUrl}/${record.targetImage}`,
+  resultImage: record.resultImage ? `${config.apiUrl}/${record.resultImage}` : undefined,
   sourceIndex: record.sourceIndex,
   targetIndex: record.targetIndex,
   status: record.status,
@@ -101,7 +108,7 @@ export const api = {
     }
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api/image-processes`, {
+      const response = await fetch(`${config.apiUrl}/api/image-processes`, {
         method: 'POST',
         body: formData,
         // Don't set Content-Type header, let the browser set it with the correct boundary
@@ -117,7 +124,7 @@ export const api = {
       
       // Send the process to the queue
       try {
-        const queueResponse = await fetch(`${API_BASE_URL}/api/queue/process`, {
+        const queueResponse = await fetch(`${config.apiUrl}/api/queue/process`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -179,7 +186,7 @@ export const api = {
         ...(sortOrder && { sortOrder }),
       });
 
-      const response = await fetch(`${API_BASE_URL}/api/image-processes?${params}`);
+      const response = await fetch(`${config.apiUrl}/api/image-processes?${params}`);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -215,7 +222,7 @@ export const api = {
   // Get details of a single processed image
   async getProcessedImage(id: string): Promise<ApiResponse<ProcessedImage>> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/image-processes/${id}`);
+      const response = await fetch(`${config.apiUrl}/api/image-processes/${id}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

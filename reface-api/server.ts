@@ -3,15 +3,57 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
-import uploadRoutes from './routes/process-image.routes';
-import queueRoutes from './routes/queue.routes';
+import session from 'express-session';
+import passport from './lib/passport';
+
+import { authenticate } from './middlewares/auth.middleware';
+import { config } from './lib/constants';
 import { initializeQueue, closeConnection } from './services/queue.service';
+import processImageRoutes from './routes/process-image.routes';
+import queueRoutes from './routes/queue.routes';
+import authRoutes from './routes/auth.routes';
+import userRoutes from './routes/user.routes';
 
 const app = express();
 
 // Middleware
-app.use(cors());
+const allowedOrigins = config.corsOrigin.split(',')?.map(origin => origin.trim())
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = 'The CORS policy for this site does not allow access from the specified origin.';
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
+
+// Trust proxy if behind one (important for secure cookies in production)
+if (config.env === 'production') {
+  app.set('trust proxy', 1);
+}
+
+app.use(session({
+  secret: config.sessionSecret,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: config.env === 'production',
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+  },
+}));
+
+// Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Ensure public directory exists
 const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
@@ -36,15 +78,15 @@ process.on('SIGINT', async () => {
 });
 
 // Routes
-app.use('/api', uploadRoutes);
-app.use('/api', queueRoutes);
+app.use('/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/image-processes', processImageRoutes);
+app.use('/api/queue', queueRoutes);
 
 app.get('/', (req, res) => {
   res.send('Reface API is running');
 });
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
+app.listen(config.port, () => {
+  console.log(`Server started on port ${config.port}`);
 });

@@ -1,6 +1,6 @@
 export function timeTaken(
-    startedAt: string,
-    endedAt: string
+    startedAt?: string,
+    endedAt?: string
   ): string {
     if (!startedAt || !endedAt) {
       return 'Not started yet';

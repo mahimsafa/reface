@@ -4,9 +4,9 @@ import { addToProcessingQueue, getQueueStatus } from '../controllers/queue.contr
 const router = Router();
 
 // Add a new process to the queue
-router.post('/queue/process', addToProcessingQueue);
+router.post('/process', addToProcessingQueue);
 
 // Get queue status
-router.get('/queue/status', getQueueStatus);
+router.get('/status', getQueueStatus);
 
 export default router;

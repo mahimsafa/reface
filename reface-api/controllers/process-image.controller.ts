@@ -36,6 +36,8 @@ export async function createImageProcess(req: Request, res: Response) {
     await fs.promises.writeFile(targetPath, target.buffer);
 
     const outputPrefix = (req.body?.output_prefix as string) || 'result';
+    const sourceIndex = (req.body?.source_index as number) || 0;
+    const targetIndex = (req.body?.target_index as number) || 0;
 
     const remoteSource = 'images/'+sourceName;
     const remoteTarget = 'images/'+targetName;
@@ -43,6 +45,8 @@ export async function createImageProcess(req: Request, res: Response) {
     const record = await createProcessRecord({
       sourceImage: remoteSource,
       targetImage: remoteTarget,
+      sourceIndex,
+      targetIndex,
       outputPrefix,
     });
 

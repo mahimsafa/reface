@@ -11,6 +11,8 @@ const IMAGES_DIR = path.resolve(process.cwd(), 'public/images');
 export type CreateProcessInput = {
   sourceImage: string;
   targetImage: string;
+  sourceIndex?: number;
+  targetIndex?: number;
   outputPrefix?: string;
 };
 
@@ -25,6 +27,8 @@ export async function createProcessRecord(input: CreateProcessInput) {
     .values({
       sourceImage: input.sourceImage,
       targetImage: input.targetImage,
+      targetIndex: input.targetIndex || 0,
+      sourceIndex: input.sourceIndex || 0,
       resultImage: null,
       status: 'pending',
       outputPrefix: input.outputPrefix ?? 'result',

@@ -21,6 +21,8 @@ export const processRecords = pgTable("process_records", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   sourceImage: varchar('source_image', { length: 1024 }).notNull(),
   targetImage: varchar('target_image', { length: 1024 }).notNull(),
+  sourceIndex: integer('source_index').notNull().default(0),
+  targetIndex: integer('target_index').notNull().default(0),
   resultImage: varchar('result_image', { length: 1024 }),
   status: processStatusEnum().notNull().default("pending"),
   outputPrefix: varchar('output_prefix', { length: 255 }).notNull().default("result"),

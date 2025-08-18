@@ -7,6 +7,8 @@ interface ProcessRecord {
   id: number;
   sourceImage: string;
   targetImage: string;
+  sourceIndex?: number;
+  targetIndex?: number;
   resultImage: string | null;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   createdAt: string;
@@ -17,12 +19,13 @@ interface ProcessRecord {
 }
 
 // Convert backend process record to frontend ProcessedImage
-const mapToProcessedImage = (record: ProcessRecord, index: number): ProcessedImage => ({
+const mapToProcessedImage = (record: ProcessRecord): ProcessedImage => ({
   id: record.id.toString(),
   sourceImage: `${API_BASE_URL}/${record.sourceImage}`,
   targetImage: `${API_BASE_URL}/${record.targetImage}`,
   resultImage: record.resultImage ? `${API_BASE_URL}/${record.resultImage}` : undefined,
-  index,
+  sourceIndex: record.sourceIndex,
+  targetIndex: record.targetIndex,
   status: record.status,
   processStarted: record.processStartedAt ? new Date(record.processStartedAt).toISOString() : undefined,
   processEnded: record.processEndedAt ? new Date(record.processEndedAt).toISOString() : undefined,
@@ -86,7 +89,13 @@ export const api = {
     formData.append('source_image', data.sourceImage);
     formData.append('target_image', data.targetImage);
     
-    // Add output prefix if provided
+    // Add indices and output prefix if provided
+    if (data.sourceIndex !== undefined) {
+      formData.append('source_index', data.sourceIndex.toString());
+    }
+    if (data.targetIndex !== undefined) {
+      formData.append('target_index', data.targetIndex.toString());
+    }
     if (data.outputPrefix) {
       formData.append('output_prefix', data.outputPrefix);
     }
@@ -118,6 +127,8 @@ export const api = {
             sourceImage: processRecord.sourceImage,
             targetImage: processRecord.targetImage,
             resultImage: processRecord.resultImage,
+            sourceIndex: processRecord.sourceIndex,
+            targetIndex: processRecord.targetIndex,
             status: processRecord.status,
             outputPrefix: processRecord.outputPrefix || 'result',
             createdAt: processRecord.createdAt,

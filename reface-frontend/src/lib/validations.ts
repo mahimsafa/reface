@@ -3,11 +3,22 @@ import { z } from 'zod';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
+// Type for the form data (raw form values)
+export type UploadFormValues = {
+  sourceImage: FileList;
+  targetImage: FileList;
+  sourceIndex?: number;
+  targetIndex?: number;
+  outputPrefix?: string;
+};
+
 // Type for the processed data with File
 interface ProcessedUploadData {
   sourceImage: File;
   targetImage: File;
-  index: number;
+  sourceIndex?: number;
+  targetIndex?: number;
+  outputPrefix?: string;
 }
 
 // File validation function
@@ -30,12 +41,27 @@ const validateFile = (file: unknown, fieldName: string) => {
 };
 
 export const uploadSchema = z.object({
-  sourceImage: z.any(),
-  targetImage: z.any(),
-  index: z
+  sourceImage: z.any().refine(
+    (files) => files?.length > 0,
+    { message: 'Source image is required' }
+  ),
+  targetImage: z.any().refine(
+    (files) => files?.length > 0,
+    { message: 'Target image is required' }
+  ),
+  sourceIndex: z.coerce
     .number()
-    .min(0, 'Index must be at least 0')
-    .max(10, 'Index must be at most 10'),
+    .min(0, 'Source index must be at least 0')
+    .max(100, 'Source index must be at most 100')
+    .default(0)
+    .optional(),
+  targetIndex: z.coerce
+    .number()
+    .min(0, 'Target index must be at least 0')
+    .max(100, 'Target index must be at most 100')
+    .default(0)
+    .optional(),
+  outputPrefix: z.string().optional(),
 });
 
 export type UploadFormData = z.infer<typeof uploadSchema>;
@@ -48,6 +74,8 @@ export const processUploadData = (data: UploadFormData): ProcessedUploadData => 
   return {
     sourceImage,
     targetImage,
-    index: data.index,
+    sourceIndex: data.sourceIndex || 0,
+    targetIndex: data.targetIndex || 0,
+    outputPrefix: data.outputPrefix,
   };
 };

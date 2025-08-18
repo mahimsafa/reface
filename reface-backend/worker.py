@@ -2,7 +2,13 @@ import json
 import time
 import logging
 import pika
+import os
+import cv2
+import numpy as np
+from datetime import datetime
 from pika.exceptions import AMQPConnectionError, ChannelClosedByBroker
+from lib.face_swap import FaceSwap
+from lib.image_utils import save_image, ensure_directory_exists
 
 # Configure logging
 
@@ -26,6 +32,23 @@ class ImageProcessingWorker:
         self.queue_name = 'image_processing_queue'
         self.max_retries = 5
         self.retry_delay = 5  # seconds
+        
+        # Configuration
+        self.model_path = "models/inswapper_128.onnx"
+        self.output_dir = "output"
+        self.input_dir = "images"
+        
+        # Ensure directories exist
+        ensure_directory_exists(self.output_dir)
+        ensure_directory_exists(self.input_dir)
+        
+        # Initialize face swapper
+        try:
+            self.face_swapper = FaceSwap(model_path=self.model_path)
+            logger.info(f"Loaded face swap model from {self.model_path}")
+        except Exception as e:
+            logger.error(f"Error loading face swap model: {str(e)}")
+            raise
 
     def connect(self):
         """Establish connection to RabbitMQ server"""
@@ -61,28 +84,96 @@ class ImageProcessingWorker:
                 logger.warning(f"Connection attempt {retries} failed. Retrying in {self.retry_delay} seconds...")
                 time.sleep(self.retry_delay)
 
+    def download_image(self, url):
+        """Download an image from a URL and return it as a numpy array"""
+        import requests
+        from io import BytesIO
+        from PIL import Image
+        
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            
+            # Read image from response content
+            image = Image.open(BytesIO(response.content))
+            
+            # Convert to RGB if needed (handles PNG with alpha channel)
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+                
+            # Convert to numpy array and BGR to RGB
+            image_np = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+            return image_np
+            
+        except requests.RequestException as e:
+            raise Exception(f"Failed to download image from {url}: {str(e)}")
+        except Exception as e:
+            raise Exception(f"Error processing image from {url}: {str(e)}")
+            
+    def get_image(self, image_path):
+        """Get image from URL or local path"""
+        if image_path.startswith(('http://', 'https://')):
+            return self.download_image(image_path)
+            
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+            
+        # Read the image using OpenCV
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Failed to read image: {image_path}")
+            
+        # Convert from BGR to RGB (which is what our face swapper expects)
+        return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
     def process_message(self, ch, method, properties, body):
         """Process incoming message from the queue"""
         try:
             message = json.loads(body)
-            logger.info(f"Received message")
-            print(message)
-            # TODO: Implement your actual image processing logic here
-            # Example:
-            # result = process_images(
-            #     message['sourceImage'],
-            #     message['targetImage'],
-            #     message.get('outputPrefix', 'output')
-            # )
+            process_id = message.get('id', 'unknown')
+            logger.info(f"Processing message: {process_id}")
             
-            # Simulate processing time
-            # for i in range(5):
-            #     logger.info(f"Processing message {message['processId']}... {i+1}/5")
-            #     time.sleep(1)
-            # Acknowledge the message
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            logger.info(f"Successfully processed")
-            
+            try:
+                # Get image URLs and download them
+                base_url = "http://localhost:5000"
+                source_url = f"{base_url}/{message['sourceImage'].lstrip('/')}"
+                target_url = f"{base_url}/{message['targetImage'].lstrip('/')}"
+                
+                logger.info(f"Downloading source image from: {source_url}")
+                logger.info(f"Downloading target image from: {target_url}")
+                
+                source_img = self.get_image(source_url)
+                target_img = self.get_image(target_url)
+                
+                # Perform face swap
+                logger.info(f"Swapping faces for process {process_id}")
+                result_img = self.face_swapper.swap_face(
+                    source_img, 
+                    target_img, 
+                    target_input=message.get('targetIndex', 0),
+                    source_input=message.get('sourceIndex', 0)
+                )
+                
+                # Save the result
+                output_prefix = message.get('outputPrefix', 'result')
+                output_filename = f"{output_prefix}_{process_id}_{int(time.time())}"
+                output_path = save_image(
+                    result_img,
+                    output_dir=self.output_dir,
+                    prefix=output_filename,
+                    extension="jpg"
+                )
+                
+                logger.info(f"Successfully processed process {process_id}. Result saved to: {output_path}")
+                
+                # Acknowledge the message
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                
+            except Exception as e:
+                logger.error(f"Error processing message {process_id}: {str(e)}")
+                # Nack the message and don't requeue it
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+                
         except json.JSONDecodeError as e:
             logger.error(f"Failed to decode message: {e}")
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)

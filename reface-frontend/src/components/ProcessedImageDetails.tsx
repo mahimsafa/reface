@@ -6,6 +6,7 @@ import { api } from '../lib/api';
 import { ProcessedImage } from '../types';
 import { timeTaken } from '../lib/utils';
 
+
 const ProcessedImageDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   
@@ -85,7 +86,8 @@ const ProcessedImageDetails: React.FC = () => {
     );
   }
 
-  const image = data.data;
+const image = data.data;
+  console.log(image);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 py-12 px-4">
@@ -113,7 +115,7 @@ const ProcessedImageDetails: React.FC = () => {
                   Face Swap #{image.id}
                 </h2>
                 <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold border mt-2 ${getStatusColor(image.status)}`}>
-                  {image.status.charAt(0).toUpperCase() + image.status.slice(1)}
+                  {image.status}
                 </span>
               </div>
             </div>
@@ -122,7 +124,7 @@ const ProcessedImageDetails: React.FC = () => {
                 <Hash className="w-4 h-4" />
                 {/* generate a total time taken in the format of 1h 2m 3s from image.processStarted to image.processEnded */}
                 <span className="font-mono text-sm">
-                  {image.processEnded ? timeTaken(image.processStarted, image.processEnded) : ''}
+                  {timeTaken(image.processStarted, image.processEnded) }
                   </span>
               </div>
             </div>

@@ -19,6 +19,8 @@ const ProcessedImagesList: React.FC = () => {
     refetchInterval: 5000,
   });
 
+  console.log(data);
+
   const getStatusIcon = (status: ProcessedImage['status']) => {
     switch (status) {
       case 'pending':
@@ -59,6 +61,7 @@ const ProcessedImagesList: React.FC = () => {
     });
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleFilterChange = (key: keyof FilterOptions, value: any) => {
     setFilters(prev => ({
       ...prev,
@@ -231,13 +234,13 @@ const ProcessedImagesList: React.FC = () => {
                     
                     <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                       <Calendar className="w-4 h-4" />
-                      <span>Started: {formatDate(image.processStarted)}</span>
+                      <span>Started: {image.processStarted ? formatDate(image.processStarted) : 'N/A'}</span>
                     </div>
                     
                     {image.processEnded && (
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <CheckCircle className="w-4 h-4" />
-                        <span>Completed: {formatDate(image.processEnded)}</span>
+                        <span>Completed: {image.processEnded ? formatDate(image.processEnded) : 'N/A'}</span>
                       </div>
                     )}
                     

@@ -5,15 +5,17 @@ export interface ProcessedImage {
   resultImage?: string;
   index: number;
   status: 'pending' | 'processing' | 'completed' | 'failed';
-  processStarted: string;
+  processStarted?: string;
   processEnded?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface UploadRequest {
   sourceImage: File;
   targetImage: File;
   index: number;
+  outputPrefix?: string;
 }
 
 export interface ApiResponse<T> {

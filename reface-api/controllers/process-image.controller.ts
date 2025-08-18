@@ -37,8 +37,8 @@ export async function createImageProcess(req: Request, res: Response) {
 
     const outputPrefix = (req.body?.output_prefix as string) || 'result';
 
-    const remoteSource = '/images/'+sourceName;
-    const remoteTarget = '/images/'+targetName;
+    const remoteSource = 'images/'+sourceName;
+    const remoteTarget = 'images/'+targetName;
 
     const record = await createProcessRecord({
       sourceImage: remoteSource,
@@ -64,10 +64,22 @@ export { IMAGES_DIR };
 
 export async function listImageProcesses(req: Request, res: Response) {
   try {
-    const skip = parseInt(String(req.query.skip ?? '0'), 10) || 0;
-    const limit = Math.min(parseInt(String(req.query.limit ?? '10'), 10) || 10, 100);
-    const data = await listProcessRecords({ skip, limit });
-    return res.json(data);
+    const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize ?? '10'), 10) || 10));
+    const sortBy = typeof req.query.sortBy === 'string' ? req.query.sortBy : undefined;
+    const sortOrder = req.query.sortOrder === 'asc' ? 'asc' : 'desc';
+    
+    const result = await listProcessRecords({
+      page,
+      pageSize,
+      sortBy: sortBy as any, // We'll validate this in the service
+      sortOrder,
+    });
+    
+    return res.json({
+      data: result.items,
+      pagination: result.pagination,
+    });
   } catch (err) {
     console.error('List image-processes error:', err);
     return res.status(500).json({ error: 'Internal server error' });

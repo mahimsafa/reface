@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import fs from 'fs';
 import { db } from '../lib/db/index';
 import { processRecords } from '../lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql, asc, desc } from 'drizzle-orm';
 
 // Base directory for image storage
 const IMAGES_DIR = path.resolve(process.cwd(), 'public/images');
@@ -69,18 +69,70 @@ export async function deleteFile(filename: string): Promise<void> {
   }
 }
 
-export async function listProcessRecords(options?: {
-  skip?: number;
-  limit?: number;
-}) {
-  const skip = options?.skip ?? 0;
-  const limit = options?.limit ?? 10;
-  // Neon HTTP + Drizzle lacks offset/limit helpers; use sql tagged template if needed
-  // But drizzle's .execute on raw sql would be more complex; keep it simple here by fetching and slicing if small scale
-  // For production, replace with proper pagination query.
-  const rows = await db.select().from(processRecords);
-  const total = rows.length;
-  return { items: rows.slice(skip, skip + limit), total };
+export interface PaginationOptions {
+  page?: number;
+  pageSize?: number;
+  sortBy?: keyof typeof processRecords;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}
+
+type ProcessRecord = typeof processRecords.$inferSelect;
+
+export async function listProcessRecords(options: PaginationOptions = {}): Promise<PaginatedResult<ProcessRecord>> {
+  const page = Math.max(1, options.page || 1);
+  const pageSize = Math.min(100, Math.max(1, options.pageSize || 10));
+  const offset = (page - 1) * pageSize;
+  
+  try {
+    // Get total count
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(processRecords);
+    const totalItems = Number(countResult?.count ?? 0);
+    
+    // Build the base query
+    let query = db.select().from(processRecords);
+    
+    // Add sorting if specified and valid
+    if (options.sortBy && processRecords[options.sortBy as keyof typeof processRecords]) {
+      const column = processRecords[options.sortBy as keyof typeof processRecords];
+      if (options.sortOrder === 'asc') {
+        // @ts-expect-error ignore  
+        query = query.orderBy(asc(column as any));
+      } else {
+        // @ts-expect-error ignore
+        query = query.orderBy(desc(column as any));
+      }
+    } else {
+      // Default sorting by creation date, newest first
+      // @ts-expect-error ignore
+      query = query.orderBy(desc(processRecords.createdAt));
+    }
+    
+    // Add pagination and execute
+    const items = await query.limit(pageSize).offset(offset);
+    
+    return {
+      items,
+      pagination: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages: Math.ceil(totalItems / pageSize),
+      },
+    };
+  } catch (error) {
+    console.error('Error listing process records:', error);
+    throw error;
+  }
 }
 
 export async function getProcessRecordById(id: number) {

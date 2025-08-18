@@ -78,7 +78,7 @@ process.on('SIGINT', async () => {
 
 // Routes
 app.use('/auth', authRoutes);
-app.use('/api/process-image', processImageRoutes);
+app.use('/api/image-processes', processImageRoutes);
 app.use('/api/queue', queueRoutes);
 
 app.get('/', (req, res) => {

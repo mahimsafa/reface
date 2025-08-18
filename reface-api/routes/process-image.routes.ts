@@ -14,12 +14,12 @@ const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
 
 // List and get
-router.get('/image-processes', listImageProcesses);
-router.get('/image-processes/:id', getImageProcess);
+router.get('', listImageProcesses);
+router.get('/:id', getImageProcess);
 
 // Create
 router.post(
-  '/image-processes',
+  '',
   upload.fields([
     { name: 'source_image', maxCount: 1 },
     { name: 'target_image', maxCount: 1 },
@@ -29,7 +29,7 @@ router.post(
 
 // Update (allow optional file re-uploads)
 router.put(
-  '/image-processes/:id',
+  '/:id',
   upload.fields([
     { name: 'source_image', maxCount: 1 },
     { name: 'target_image', maxCount: 1 },
@@ -39,7 +39,7 @@ router.put(
 );
 
 router.patch(
-  '/image-processes/:id',
+  '/:id',
   upload.fields([
     { name: 'source_image', maxCount: 1 },
     { name: 'target_image', maxCount: 1 },
@@ -49,6 +49,6 @@ router.patch(
 );
 
 // Delete
-router.delete('/image-processes/:id', deleteImageProcess);
+router.delete('/:id', deleteImageProcess);
 
 export default router;

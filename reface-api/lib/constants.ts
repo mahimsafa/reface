@@ -9,7 +9,7 @@ export const config = {
     apiBaseUrl: process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 5000}`,
     rabbitmq: {
       url: process.env.RABBITMQ_URL || 'amqp://admin:admin@localhost:5672',
-      imageProcessQueue: process.env.IMAGE_PROCESS_QUEUE || 'image_process_queue',
+      imageProcessQueue: 'image_processing_queue',
     },
     db: {
       url: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/postgres',

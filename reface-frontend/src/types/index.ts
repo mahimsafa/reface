@@ -3,7 +3,8 @@ export interface ProcessedImage {
   sourceImage: string;
   targetImage: string;
   resultImage?: string;
-  index: number;
+  sourceIndex?: number;
+  targetIndex?: number;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   processStarted?: string;
   processEnded?: string;
@@ -14,7 +15,8 @@ export interface ProcessedImage {
 export interface UploadRequest {
   sourceImage: File;
   targetImage: File;
-  index: number;
+  sourceIndex?: number;
+  targetIndex?: number;
   outputPrefix?: string;
 }
 
@@ -49,7 +51,7 @@ export interface CreditPackage {
 
 export interface FilterOptions {
   status?: ProcessedImage['status'];
-  sortBy: 'processStarted' | 'processEnded';
+  sortBy: 'createdAt' | 'updatedAt' | 'processStartedAt' | 'processEndedAt';
   sortOrder: 'asc' | 'desc';
   page: number;
   limit: number;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -11,18 +11,16 @@ const ImageUpload: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-    reset,
-  } = useForm<UploadFormData>({
+  const form = useForm<UploadFormData>({
     resolver: zodResolver(uploadSchema),
     defaultValues: {
-      index: 0,
+      sourceIndex: 0,
+      targetIndex: 0,
     },
   });
+
+  const { register, watch, formState: { errors } } = form;
+  const { handleSubmit, reset } = form;
 
   const uploadMutation = useMutation({
     mutationFn: api.upload,
@@ -34,7 +32,7 @@ const ImageUpload: React.FC = () => {
     },
   });
 
-  const onSubmit = (formData: UploadFormData) => {
+  const onSubmit: SubmitHandler<UploadFormData> = (formData) => {
     try {
       // Process the form data to extract File objects from FileList
       const uploadData = processUploadData(formData);
@@ -67,7 +65,7 @@ const ImageUpload: React.FC = () => {
                   <input
                     type="file"
                     accept="image/*"
-                    {...register('sourceImage')}
+                    {...register('sourceImage', { required: 'Source image is required' })}
                     className="hidden"
                     id="sourceImage"
                   />
@@ -107,7 +105,7 @@ const ImageUpload: React.FC = () => {
                   <input
                     type="file"
                     accept="image/*"
-                    {...register('targetImage')}
+                    {...register('targetImage', { required: 'Target image is required' })}
                     className="hidden"
                     id="targetImage"
                   />
@@ -139,22 +137,40 @@ const ImageUpload: React.FC = () => {
               </div>
             </div>
 
-            {/* Index Field */}
-            <div className="mt-8">
-              <label className="block text-lg font-semibold text-gray-900 mb-4">
-                Target Index
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                {...register('index', { valueAsNumber: true })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                placeholder="Enter index (0-100)"
-              />
-              {errors.index && (
-                <p className="text-red-500 text-sm mt-2">{errors.index.message}</p>
-              )}
+            {/* Index Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+              <div>
+                <label className="block text-lg font-semibold text-gray-900 mb-4">
+                  Source Face Index
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  {...register('sourceIndex', { valueAsNumber: true })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Source face index"
+                />
+                {errors.sourceIndex && (
+                  <p className="text-red-500 text-sm mt-2">{errors.sourceIndex.message}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-lg font-semibold text-gray-900 mb-4">
+                  Target Face Index
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  {...register('targetIndex', { valueAsNumber: true })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Target face index"
+                />
+                {errors.targetIndex && (
+                  <p className="text-red-500 text-sm mt-2">{errors.targetIndex.message}</p>
+                )}
+              </div>
             </div>
 
             {/* Submit Button */}

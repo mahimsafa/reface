@@ -1,13 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Clock,
   CheckCircle,
   XCircle,
   Loader,
   Eye,
-  Calendar,
+  // Calendar,
   Filter,
   ChevronLeft,
   ChevronRight,
@@ -17,12 +17,42 @@ import { api } from "../lib/api";
 import { ProcessedImage, FilterOptions } from "../types";
 
 const ProcessedImagesList: React.FC = () => {
-  const [filters, setFilters] = useState<FilterOptions>({
-    sortBy: "processStarted",
-    sortOrder: "desc",
-    page: 1,
-    limit: 10,
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Parse URL parameters or use defaults
+  const getInitialFilters = (): FilterOptions => {
+    // Define valid sort fields and statuses with proper types
+    type SortField = 'createdAt' | 'updatedAt' | 'processStartedAt' | 'processEndedAt';
+    type Status = 'pending' | 'processing' | 'completed' | 'failed';
+    
+    const validSortFields: readonly SortField[] = ['createdAt', 'updatedAt', 'processStartedAt', 'processEndedAt'];
+    const validStatuses: readonly Status[] = ['pending', 'processing', 'completed', 'failed'];
+    
+    // Helper function to check if a value is a valid sort field
+    const isValidSortField = (value: string | null): value is SortField => 
+      value !== null && validSortFields.includes(value as SortField);
+    
+    // Helper function to check if a value is a valid status
+    const isValidStatus = (value: string | null): value is Status => 
+      value !== null && validStatuses.includes(value as Status);
+    
+    // Get and validate parameters
+    const sortBy = searchParams.get('sortBy');
+    const sortOrder = searchParams.get('sortOrder');
+    const status = searchParams.get('status');
+    const page = Number(searchParams.get('page'));
+    const limit = Number(searchParams.get('limit'));
+    
+    return {
+      sortBy: isValidSortField(sortBy) ? sortBy : 'createdAt',
+      sortOrder: sortOrder === 'asc' ? 'asc' : 'desc',
+      page: Number.isInteger(page) && page > 0 ? page : 1,
+      limit: [10, 25, 50, 100].includes(limit) ? limit : 10,
+      status: isValidStatus(status) ? status : undefined,
+    };
+  };
+  
+  const [filters, setFilters] = useState<FilterOptions>(getInitialFilters);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["processedImages", filters],
@@ -72,13 +102,31 @@ const ProcessedImagesList: React.FC = () => {
     });
   };
 
+  // Update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    
+    // Only add parameters that are not default values
+    if (filters.sortBy !== 'createdAt') params.set('sortBy', filters.sortBy);
+    if (filters.sortOrder !== 'desc') params.set('sortOrder', filters.sortOrder);
+    if (filters.page !== 1) params.set('page', filters.page.toString());
+    if (filters.limit !== 10) params.set('limit', filters.limit.toString());
+    if (filters.status) params.set('status', filters.status);
+    
+    // Update URL without causing a navigation
+    setSearchParams(params, { replace: true });
+  }, [filters, setSearchParams]);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleFilterChange = (key: keyof FilterOptions, value: any) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-      page: key !== "page" ? 1 : value, // Reset to page 1 when changing other filters
-    }));
+    setFilters((prev) => {
+      const newFilters = {
+        ...prev,
+        [key]: value,
+        page: key !== "page" ? 1 : value, // Reset to page 1 when changing other filters
+      };
+      return newFilters;
+    });
   };
 
   const handlePageChange = (newPage: number) => {
@@ -168,8 +216,10 @@ const ProcessedImagesList: React.FC = () => {
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="processStarted">Start Date</option>
-                <option value="processEnded">End Date</option>
+                <option value="createdAt">Created At</option>
+                <option value="updatedAt">Updated At</option>
+                <option value="processStartedAt">Process Start Time</option>
+                <option value="processEndedAt">Process End Time</option>
               </select>
             </div>
 

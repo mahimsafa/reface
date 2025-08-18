@@ -21,6 +21,10 @@ const ProcessedImageDetails: React.FC = () => {
     queryKey: ["processedImage", id],
     queryFn: () => api.getProcessedImage(id!),
     enabled: !!id,
+    refetchInterval: (query) => {
+      // Only refetch if status is not 'completed'
+      return query.state.data?.data.status !== "completed" ? 5000 : false;
+    },
   });
 
   const getStatusIcon = (status: ProcessedImage["status"]) => {
@@ -247,7 +251,7 @@ const ProcessedImageDetails: React.FC = () => {
                     Process Started
                   </p>
                   <p className="text-gray-900">
-                    {formatDate(image.processStarted)}
+                    {image.processStarted && formatDate(image.processStarted)}
                   </p>
                 </div>
               </div>

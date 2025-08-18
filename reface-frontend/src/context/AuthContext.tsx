@@ -62,16 +62,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const fetchUserData = async (token: string) => {
     // Prevent multiple simultaneous calls
     if (isLoadingUser) {
-      console.log('AuthContext: fetchUserData already in progress, skipping');
+      // console.log('AuthContext: fetchUserData already in progress, skipping');
       return;
     }
     
-    console.log('AuthContext: Starting fetchUserData');
+    // console.log('AuthContext: Starting fetchUserData');
     setIsLoadingUser(true);
     try {
-      console.log('AuthContext: Calling authApi.getCurrentUser()');
+      // console.log('AuthContext: Calling authApi.getCurrentUser()');
       const userData = await authApi.getCurrentUser();
-      console.log('AuthContext: User data received:', userData);
+      // console.log('AuthContext: User data received:', userData);
       setUser(userData);
     } catch (error) {
       console.error('AuthContext: Failed to fetch user data:', error);
@@ -79,12 +79,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // The user can still use the app with valid tokens
     } finally {
       setIsLoadingUser(false);
-      console.log('AuthContext: fetchUserData completed');
+      // console.log('AuthContext: fetchUserData completed');
     }
   };
 
   const login = (accessToken: string, refreshToken: string) => {
-    console.log('AuthContext: Login called with tokens');
+    // console.log('AuthContext: Login called with tokens');
     
     setCookie('accessToken', accessToken, 7); // 7 days
     setCookie('refreshToken', refreshToken, 30); // 30 days for refresh token
@@ -94,7 +94,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsAuthenticated(true);
     
     // Fetch user data after login
-    console.log('AuthContext: Fetching user data');
+    // console.log('AuthContext: Fetching user data');
     fetchUserData(accessToken);
   };
 

@@ -58,9 +58,8 @@ const ProcessedImagesList: React.FC = () => {
     queryKey: ["processedImages", filters],
     queryFn: () => api.getProcessedImages(filters),
     refetchInterval: 5000,
+    // refetchOnWindowFocus: false,
   });
-
-  console.log(data);
 
   const getStatusIcon = (status: ProcessedImage["status"]) => {
     switch (status) {

@@ -5,11 +5,11 @@ import { User } from '../types';
 export const authApi = {
   // Get current user info
   getCurrentUser: async (): Promise<User> => {
-    return api.get(config.authMeUrl);
+    return api.get(`${config.apiUrl}/api/users/me`);
   },
 
   // Refresh token (if needed in the future)
   refreshToken: async (refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> => {
-    return api.post(`${config.apiUrl}/auth/refresh`, { refreshToken });
+    return api.post(`${config.apiUrl}/api/auth/refresh`, { refreshToken });
   },
 };

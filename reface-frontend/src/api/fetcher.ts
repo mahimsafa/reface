@@ -8,7 +8,7 @@ export const setAuthContext = (context: ReturnType<typeof useAuth>) => {
 };
 
 export const fetcher = async (url: string, options: RequestInit = {}) => {
-  console.log('Fetcher: Making request to:', url);
+  // console.log('Fetcher: Making request to:', url);
   
   // Get access token from cookies if auth context is not available
   let accessToken = authContext?.accessToken;
@@ -20,25 +20,25 @@ export const fetcher = async (url: string, options: RequestInit = {}) => {
     }
   }
   
-  console.log('Fetcher: Using access token:', !!accessToken);
+  // console.log('Fetcher: Using access token:', !!accessToken);
 
   const config: RequestInit = {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      // 'Content-Type': 'application/json',
       ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
       ...options.headers,
     },
   };
 
   try {
-    console.log('Fetcher: Sending request with config:', config);
+    // console.log('Fetcher: Sending request with config:', config);
     const response = await fetch(url, config);
-    console.log('Fetcher: Response received:', response.status, response.statusText);
+    // console.log('Fetcher: Response received:', response.status, response.statusText);
     
     // Handle 401 Unauthorized responses
     if (response.status === 401) {
-      console.log('Fetcher: 401 Unauthorized - logging out');
+      // console.log('Fetcher: 401 Unauthorized - logging out');
       // Clear auth state and cookies
       if (authContext) {
         authContext.logout();
@@ -57,11 +57,11 @@ export const fetcher = async (url: string, options: RequestInit = {}) => {
     }
 
     const data = await response.json();
-    console.log('Fetcher: Response data:', data);
+    // console.log('Fetcher: Response data:', data);
     return data;
   } catch (error) {
-    console.error('Fetcher: API request failed:', error);
-    throw error;
+    // console.error('Fetcher: API request failed:', error);
+    throw new Error(error as string);
   }
 };
 
@@ -72,6 +72,13 @@ export const api = {
   post: (url: string, data?: any) => fetcher(url, {
     method: 'POST',
     body: data ? JSON.stringify(data) : undefined,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  }),
+  postRaw: (url: string, data?: any) => fetcher(url, {
+    method: 'POST',
+    body: data,
   }),
   
   put: (url: string, data?: any) => fetcher(url, {

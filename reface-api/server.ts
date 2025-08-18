@@ -29,7 +29,7 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'dev_session_secret_change_
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true,
   cookie: {
     httpOnly: true,
     // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
@@ -74,8 +74,6 @@ app.get('/', (req, res) => {
 });
 
 app.get('/me', (req, res) => {
-  console.log(req.isAuthenticated());
-  console.log(req.user);
   res.json({
     isAuthenticated: req.isAuthenticated(),
     user: req.user,

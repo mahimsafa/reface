@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 
 export const generateToken = (payload: any) => {
-  const secret = "secret";
+  const secret = process.env.JWT_SECRET;
   const expiresIn = "1h";
 
   if (!secret) {

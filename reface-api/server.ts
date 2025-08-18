@@ -10,6 +10,7 @@ import { initializeQueue, closeConnection } from './services/queue.service';
 import processImageRoutes from './routes/process-image.routes';
 import queueRoutes from './routes/queue.routes';
 import authRoutes from './routes/auth.routes';
+import { isAuthenticated } from './middleware/auth.middleware';
 
 const app = express();
 
@@ -39,7 +40,7 @@ app.use(session({
 
 // Passport
 app.use(passport.initialize());
-// app.use(passport.session());
+app.use(passport.session());
 
 // Ensure public directory exists
 const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
@@ -70,6 +71,15 @@ app.use('/api/queue', queueRoutes);
 
 app.get('/', (req, res) => {
   res.send('Reface API is running');
+});
+
+app.get('/me', (req, res) => {
+  console.log(req.isAuthenticated());
+  console.log(req.user);
+  res.json({
+    isAuthenticated: req.isAuthenticated(),
+    user: req.user,
+  });
 });
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;

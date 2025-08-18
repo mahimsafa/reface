@@ -51,7 +51,7 @@ export interface CreditPackage {
 
 export interface FilterOptions {
   status?: ProcessedImage['status'];
-  sortBy: 'processStarted' | 'processEnded';
+  sortBy: 'createdAt' | 'updatedAt' | 'processStartedAt' | 'processEndedAt';
   sortOrder: 'asc' | 'desc';
   page: number;
   limit: number;

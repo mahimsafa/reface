@@ -7,7 +7,7 @@ import {
   XCircle,
   Loader,
   Eye,
-  Calendar,
+  // Calendar,
   Filter,
   ChevronLeft,
   ChevronRight,
@@ -18,7 +18,7 @@ import { ProcessedImage, FilterOptions } from "../types";
 
 const ProcessedImagesList: React.FC = () => {
   const [filters, setFilters] = useState<FilterOptions>({
-    sortBy: "processStarted",
+    sortBy: "createdAt",
     sortOrder: "desc",
     page: 1,
     limit: 10,
@@ -168,8 +168,10 @@ const ProcessedImagesList: React.FC = () => {
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="processStarted">Start Date</option>
-                <option value="processEnded">End Date</option>
+                <option value="createdAt">Created At</option>
+                <option value="updatedAt">Updated At</option>
+                <option value="processStartedAt">Process Start Time</option>
+                <option value="processEndedAt">Process End Time</option>
               </select>
             </div>
 

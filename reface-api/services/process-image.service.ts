@@ -93,36 +93,49 @@ export interface PaginatedResult<T> {
 
 type ProcessRecord = typeof processRecords.$inferSelect;
 
-export async function listProcessRecords(options: PaginationOptions = {}): Promise<PaginatedResult<ProcessRecord>> {
+export async function listProcessRecords(options: PaginationOptions & { status?: string } = {}): Promise<PaginatedResult<ProcessRecord>> {
   const page = Math.max(1, options.page || 1);
   const pageSize = Math.min(100, Math.max(1, options.pageSize || 10));
   const offset = (page - 1) * pageSize;
   
   try {
-    // Get total count
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(processRecords);
-    const totalItems = Number(countResult?.count ?? 0);
+    // Get total count with status filter if provided
+    let countQuery = db.select({ count: sql<number>`count(*)` }).from(processRecords);
     
     // Build the base query
     let query = db.select().from(processRecords);
     
-    // Add sorting if specified and valid
-    if (options.sortBy && processRecords[options.sortBy as keyof typeof processRecords]) {
-      const column = processRecords[options.sortBy as keyof typeof processRecords];
-      if (options.sortOrder === 'asc') {
-        // @ts-expect-error ignore  
-        query = query.orderBy(asc(column as any));
-      } else {
-        // @ts-expect-error ignore
-        query = query.orderBy(desc(column as any));
-      }
+    // Apply status filter if provided
+    if (options.status) {
+      const whereClause = eq(processRecords.status, options.status as any);
+      countQuery = countQuery.where(whereClause);
+      query = query.where(whereClause);
+    }
+    
+    // Execute count query
+    const [countResult] = await countQuery;
+    const totalItems = Number(countResult?.count ?? 0);
+    
+    // Apply sorting
+    const sortField = (options.sortBy && processRecords[options.sortBy as keyof typeof processRecords])
+      ? options.sortBy
+      : 'createdAt';
+    
+    // Apply sorting with proper type assertions
+    const sortDirection = options.sortOrder === 'asc' ? asc : desc;
+    
+    // Use type assertion to bypass TypeScript errors
+    const processRecordsAny = processRecords as any;
+    
+    // Apply sorting based on field
+    if (sortField in processRecords) {
+      query = query.orderBy(sortDirection(processRecordsAny[sortField]));
     } else {
-      // Default sorting by creation date, newest first
-      // @ts-expect-error ignore
+      // Default sorting if field is invalid
       query = query.orderBy(desc(processRecords.createdAt));
     }
     
-    // Add pagination and execute
+    // Apply pagination and execute
     const items = await query.limit(pageSize).offset(offset);
     
     return {

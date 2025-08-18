@@ -72,12 +72,14 @@ export async function listImageProcesses(req: Request, res: Response) {
     const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize ?? '10'), 10) || 10));
     const sortBy = typeof req.query.sortBy === 'string' ? req.query.sortBy : undefined;
     const sortOrder = req.query.sortOrder === 'asc' ? 'asc' : 'desc';
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
     
     const result = await listProcessRecords({
       page,
       pageSize,
-      sortBy: sortBy as any, // We'll validate this in the service
+      sortBy: sortBy as any, // Will be validated in the service
       sortOrder,
+      status, // Pass status to filter results
     });
     
     return res.json({

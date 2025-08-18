@@ -17,19 +17,29 @@
   "packageManager": "pnpm@9.15.2+sha512.93e57b0126f0df74ce6bff29680394c0ba54ec47246b9cf321f0121d8d9bb03f750a705f24edc3c1180853afd7c2c3b94196d0a3d53d3e069d9e2793ef11f321",
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",
+    "@types/bcrypt": "^6.0.0",
     "amqplib": "^0.10.8",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.4",
     "express": "^5.1.0",
-    "multer": "^2.0.2"
+    "express-session": "^1.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "passport": "^0.7.0",
+    "passport-facebook": "^3.0.0"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.7",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
+    "@types/express-session": "^1.18.2",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.3.0",
+    "@types/passport": "^1.0.17",
+    "@types/passport-facebook": "^3.0.3",
     "drizzle-kit": "^0.31.4",
     "tsx": "^4.20.4"
   }

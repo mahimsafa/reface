@@ -1,15 +1,56 @@
-import { integer, pgTable, varchar } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { relations } from 'drizzle-orm';
 
 export const usersTable = pgTable("users", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   name: varchar({ length: 255 }).notNull(),
-  age: integer().notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
+  password: varchar({ length: 255 }).notNull(),
+  provider: varchar({ length: 255 }).notNull(),
+  providerId: varchar({ length: 255 }).notNull(),
+  avatar: varchar({ length: 255 }),
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }),
 });
 
-// Process/upload tracking similar to Python FastAPI app's ProcessRecord
-import { pgEnum, timestamp } from "drizzle-orm/pg-core";
+export const userWalletTable = pgTable("user_wallet", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer().references(() => usersTable.id).notNull(),
+  freeCredits: integer().notNull().default(0),
+  paidCredits: integer().notNull().default(0),
+  redeemedCredits: integer().notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }),
+});
 
+export const userCreditWalletRelation = relations(usersTable, ({ one }) => ({
+	wallet: one(userWalletTable),
+}));
+
+
+export const creditTypesEnum = pgEnum("credit_type", [
+  "free",
+  "paid",
+  "redeemed",
+]);
+
+export const creditHistoryTable = pgTable("credit_history", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer().references(() => usersTable.id).notNull(),
+  creditType: creditTypesEnum().notNull(),
+  credits: integer().notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }),
+});
+
+export const creditHistoryRelation = relations(creditHistoryTable, ({ one }) => ({
+  user: one(usersTable, {
+    fields: [creditHistoryTable.userId],
+    references: [usersTable.id],
+  }),
+}));
+
+// Process/upload tracking similar to Python FastAPI app's ProcessRecord
 export const processStatusEnum = pgEnum("process_status", [
   "pending",
   "processing",

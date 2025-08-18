@@ -25,6 +25,13 @@ const ProcessedImageDetails: React.FC = () => {
       // Only refetch if status is not 'completed'
       return query.state.data?.data.status !== "completed" ? 5000 : false;
     },
+    retry: (failureCount, error) => {
+      if (error.message.includes("404")) {
+        return false;
+      }
+      // Otherwise, use default retry behavior (up to 3 attempts)
+      return failureCount < 3;
+    },
   });
 
   const getStatusIcon = (status: ProcessedImage["status"]) => {

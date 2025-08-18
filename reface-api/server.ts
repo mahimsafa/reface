@@ -10,30 +10,42 @@ import { initializeQueue, closeConnection } from './services/queue.service';
 import processImageRoutes from './routes/process-image.routes';
 import queueRoutes from './routes/queue.routes';
 import authRoutes from './routes/auth.routes';
-import { isAuthenticated } from './middleware/auth.middleware';
+import { authenticate } from './middlewares/auth.middleware';
+import { config } from './lib/constants';
 
 const app = express();
 
 // Middleware
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-app.use(cors({ origin: FRONTEND_URL, credentials: true }));
+const allowedOrigins = config.corsOrigin.split(',')?.map(origin => origin.trim())
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = 'The CORS policy for this site does not allow access from the specified origin.';
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 // Trust proxy if behind one (important for secure cookies in production)
-if (process.env.NODE_ENV === 'production') {
+if (config.env === 'production') {
   app.set('trust proxy', 1);
 }
 
-// Sessions
-const SESSION_SECRET = process.env.SESSION_SECRET || 'dev_session_secret_change_me';
 app.use(session({
-  secret: SESSION_SECRET,
+  secret: config.sessionSecret,
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
   cookie: {
     httpOnly: true,
     // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: config.env === 'production',
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
   },
 }));
@@ -73,15 +85,13 @@ app.get('/', (req, res) => {
   res.send('Reface API is running');
 });
 
-app.get('/me', (req, res) => {
+app.get('/me', authenticate,(req, res) => {
   res.json({
     isAuthenticated: req.isAuthenticated(),
     user: req.user,
   });
 });
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
+app.listen(config.port, () => {
+  console.log(`Server started on port ${config.port}`);
 });

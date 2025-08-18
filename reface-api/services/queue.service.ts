@@ -1,4 +1,5 @@
 import amqp, { Channel, Connection, Options } from 'amqplib';
+import { config } from '../lib/constants';
 
 type QueueMessage = {
   id: number;
@@ -15,7 +16,7 @@ class QueueService {
   private static instance: QueueService;
   private channel: Channel | null = null;
   private connection: Connection | null = null;
-  private readonly QUEUE_NAME = 'image_processing_queue';
+  private readonly QUEUE_NAME = config.rabbitmq.imageProcessQueue;
   private readonly RABBITMQ_URL: string;
   private isConnecting: boolean = false;
   private reconnectAttempts: number = 0;
@@ -23,7 +24,7 @@ class QueueService {
   private readonly RECONNECT_DELAY = 5000; // 5 seconds
 
   private constructor() {
-    this.RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://admin:admin@localhost:5672';
+    this.RABBITMQ_URL = config.rabbitmq.url;
   }
 
   public static getInstance(): QueueService {

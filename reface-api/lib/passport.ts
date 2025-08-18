@@ -5,6 +5,7 @@ import { randomBytes, createHash } from "crypto";
 
 import { db } from "./db";
 import { usersTable } from "./db/schema";
+import { config } from "./constants";
 
 // Helper function to hash password using crypto
 async function hashPassword(password: string): Promise<string> {
@@ -18,8 +19,8 @@ passport.use(
   "facebook",
   new FacebookStrategy(
     {
-      clientID: process.env.FACEBOOK_APP_ID || "",
-      clientSecret: process.env.FACEBOOK_APP_SECRET || "",
+      clientID: config.facebook.appId,
+      clientSecret: config.facebook.appSecret,
       callbackURL: "/auth/facebook/callback",
       profileFields: ["id", "emails", "name", "displayName", "photos"],
       scope: ["email"],

@@ -1,9 +1,6 @@
 import jwt from "jsonwebtoken";
 
-export const generateToken = (payload: any) => {
-  const secret = process.env.JWT_SECRET;
-  const expiresIn = "1h";
-
+export const generateToken = (payload: any, secret: string, expiresIn: string) => {
   if (!secret) {
     throw new Error("JWT secret is not configured");
   }

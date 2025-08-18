@@ -1,8 +1,24 @@
 
+import { eq } from "drizzle-orm";
+
 import { db } from "../lib/db";
 import { usersTable } from "../lib/db/schema";
 import { generateToken } from "../utils/jwt";
+import { config } from "../lib/constants";
 
+export const findUserByEmail = async (email: string) => {
+  const user = await db.query.usersTable.findFirst({
+    where: eq(usersTable.email, email),
+  });
+  return user;
+};
+
+export const findUserById = async (id: number) => {
+  const user = await db.query.usersTable.findFirst({
+    where: eq(usersTable.id, id),
+  });
+  return user;
+};
 interface CreateUserInput {
   name: string;
   email: string;
@@ -36,8 +52,16 @@ export const generateAuthTokens = (user: any) => {
       email: user.email,
     };
   
-    const token = generateToken(payload);
-    const refreshToken = generateToken(payload);
+    const token = generateToken(
+      payload, 
+      config.jwt.accessToken.secret, 
+      config.jwt.accessToken.expiresIn
+    );
+    const refreshToken = generateToken(
+      payload, 
+      config.jwt.refreshToken.secret, 
+      config.jwt.refreshToken.expiresIn
+    );
   
     return { token, refreshToken, user };
   };

@@ -4,6 +4,8 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import uploadRoutes from './routes/process-image.routes';
+import queueRoutes from './routes/queue.routes';
+import { initializeQueue, closeConnection } from './services/queue.service';
 
 const app = express();
 
@@ -20,8 +22,22 @@ fs.mkdirSync(IMAGES_DIR, { recursive: true });
 app.use('/assets', express.static(PUBLIC_DIR));
 app.use('/images', express.static(IMAGES_DIR));
 
+// Initialize queue connection
+initializeQueue().catch(err => {
+  console.error('Failed to initialize queue:', err);
+  process.exit(1);
+});
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Shutting down server...');
+  await closeConnection();
+  process.exit(0);
+});
+
 // Routes
 app.use('/api', uploadRoutes);
+app.use('/api', queueRoutes);
 
 app.get('/', (req, res) => {
   res.send('Reface API is running');

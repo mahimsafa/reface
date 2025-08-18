@@ -1,0 +1,21 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management   # includes management plugin
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # RabbitMQ broker (AMQP)
+      - "15672:15672" # Management dashboard
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - rabbitmq_net
+
+volumes:
+  rabbitmq_data:
+
+networks:
+  rabbitmq_net:
+    driver: bridge

@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.ts",
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "tsx watch --include './lib/**/*' --include './controllers/**/*' --include './services/**/*' --include './routes/**/*' server.ts",
     "build": "tsx server.ts",
     "start": "tsx server.ts",
     "db:push": "drizzle-kit push",
@@ -17,6 +17,7 @@
   "packageManager": "pnpm@9.15.2+sha512.93e57b0126f0df74ce6bff29680394c0ba54ec47246b9cf321f0121d8d9bb03f750a705f24edc3c1180853afd7c2c3b94196d0a3d53d3e069d9e2793ef11f321",
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",
+    "amqplib": "^0.10.8",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.4",
@@ -24,6 +25,10 @@
     "multer": "^2.0.2"
   },
   "devDependencies": {
+    "@types/amqplib": "^0.10.7",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.3.0",
     "drizzle-kit": "^0.31.4",
     "tsx": "^4.20.4"
   }

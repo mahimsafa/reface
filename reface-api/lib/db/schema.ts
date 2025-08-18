@@ -60,6 +60,7 @@ export const processStatusEnum = pgEnum("process_status", [
 
 export const processRecords = pgTable("process_records", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer().references(() => usersTable.id),
   sourceImage: varchar('source_image', { length: 1024 }).notNull(),
   targetImage: varchar('target_image', { length: 1024 }).notNull(),
   sourceIndex: integer('source_index').notNull().default(0),
@@ -72,3 +73,11 @@ export const processRecords = pgTable("process_records", {
   processStartedAt: timestamp('process_started_at', { withTimezone: false }),
   processEndedAt: timestamp('process_ended_at', { withTimezone: false }),
 });
+
+export const processRecordsRelation = relations(processRecords, ({ one }) => ({
+  user: one(usersTable, {
+    fields: [processRecords.userId],
+    references: [usersTable.id],
+  }),
+}));
+

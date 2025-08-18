@@ -187,7 +187,7 @@ class ImageProcessingWorker:
 
                 # Perform face swap
                 logger.info(f"Swapping faces for process {process_id}")
-                time.sleep(15)
+                # time.sleep(15)
                 result_img = self.face_swapper.swap_face(
                     source_img,
                     target_img,

@@ -14,6 +14,7 @@ import {
 const IMAGES_DIR = path.resolve(process.cwd(), 'images');
 
 export async function createImageProcess(req: Request, res: Response) {
+  const user = req.user;
   try {
     // Ensure images directory exists
     await ensureDirExists(IMAGES_DIR);
@@ -48,6 +49,8 @@ export async function createImageProcess(req: Request, res: Response) {
       sourceIndex,
       targetIndex,
       outputPrefix,
+      // @ts-ignore
+      userId: user.id,
     });
 
     return res.status(201).json({
@@ -67,6 +70,7 @@ export async function createImageProcess(req: Request, res: Response) {
 export { IMAGES_DIR };
 
 export async function listImageProcesses(req: Request, res: Response) {
+  const user = req.user;
   try {
     const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize ?? '10'), 10) || 10));
@@ -74,7 +78,10 @@ export async function listImageProcesses(req: Request, res: Response) {
     const sortOrder = req.query.sortOrder === 'asc' ? 'asc' : 'desc';
     const status = typeof req.query.status === 'string' ? req.query.status : undefined;
     
-    const result = await listProcessRecords({
+    const result = await listProcessRecords(
+      // @ts-ignore
+      user.id,
+      {
       page,
       pageSize,
       sortBy: sortBy as any, // Will be validated in the service
@@ -93,12 +100,14 @@ export async function listImageProcesses(req: Request, res: Response) {
 }
 
 export async function getImageProcess(req: Request, res: Response) {
+  const user = req.user;
   try {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) {
       return res.status(400).json({ error: 'Invalid id' });
     }
-    const rec = await getProcessRecordById(id);
+    // @ts-ignore
+    const rec = await getProcessRecordById(user.id, id);
     if (!rec) return res.status(404).json({ error: 'Not found' });
     return res.json(rec);
   } catch (err) {

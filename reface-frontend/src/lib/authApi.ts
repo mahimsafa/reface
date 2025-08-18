@@ -10,6 +10,6 @@ export const authApi = {
 
   // Refresh token (if needed in the future)
   refreshToken: async (refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> => {
-    return api.post(`${config.apiUrl}/api/auth/refresh`, { refreshToken });
+    return api.post(`${config.apiUrl}/auth/refresh-token`, { token: refreshToken });
   },
 };

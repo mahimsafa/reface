@@ -17,3 +17,11 @@ export const generateToken = (payload: any, secret: string, expiresIn: string) =
 
   return jwt.sign(payload, secret, options);
 };
+
+export const verifyToken = (token: string, secret: string) => {
+  if (!secret) {
+    throw new Error("JWT secret is not configured");
+  }
+
+  return jwt.verify(token, secret);
+};

@@ -13,6 +13,7 @@ import {
 import { api } from "../lib/api";
 import { ProcessedImage } from "../types";
 import { timeTaken } from "../lib/utils";
+import { PhotoView } from "react-photo-view";
 
 const ProcessedImageDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -160,11 +161,13 @@ const ProcessedImageDetails: React.FC = () => {
           {/* Source Image */}
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div className="aspect-square bg-gray-100">
-              <img
-                src={image.sourceImage}
-                alt="Source"
-                className="w-full h-full object-cover"
-              />
+              <PhotoView src={image.sourceImage}>
+                <img
+                  src={image.sourceImage}
+                  alt="Source"
+                  className="w-full h-full object-cover cursor-pointer"
+                />
+              </PhotoView>
             </div>
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -177,11 +180,13 @@ const ProcessedImageDetails: React.FC = () => {
           {/* Target Image */}
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div className="aspect-square bg-gray-100">
-              <img
-                src={image.targetImage}
-                alt="Target"
-                className="w-full h-full object-cover"
-              />
+              <PhotoView src={image.targetImage}>
+                <img
+                  src={image.targetImage}
+                  alt="Target"
+                  className="w-full h-full object-cover cursor-pointer"
+                />
+              </PhotoView>
             </div>
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -195,11 +200,13 @@ const ProcessedImageDetails: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div className="aspect-square bg-gray-100 flex items-center justify-center">
               {image.resultImage ? (
-                <img
-                  src={image.resultImage}
-                  alt="Result"
-                  className="w-full h-full object-cover"
-                />
+                <PhotoView src={image.resultImage}>
+                  <img
+                    src={image.resultImage}
+                    alt="Result"
+                    className="w-full h-full object-cover cursor-pointer"
+                  />
+                </PhotoView>
               ) : (
                 <div className="text-center">
                   <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">

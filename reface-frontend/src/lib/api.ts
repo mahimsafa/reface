@@ -104,14 +104,44 @@ export const api = {
       }
 
       const result = await response.json();
-      const processedImage = mapToProcessedImage(result.data, 0);
+      const processRecord = result.data;
+      
+      // Send the process to the queue
+      try {
+        const queueResponse = await fetch(`${API_BASE_URL}/api/queue/process`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: processRecord.id,
+            sourceImage: processRecord.sourceImage,
+            targetImage: processRecord.targetImage,
+            resultImage: processRecord.resultImage,
+            status: processRecord.status,
+            outputPrefix: processRecord.outputPrefix || 'result',
+            createdAt: processRecord.createdAt,
+            updatedAt: processRecord.updatedAt,
+            processStartedAt: processRecord.processStartedAt,
+            processEndedAt: processRecord.processEndedAt
+          })
+        });
+
+        if (!queueResponse.ok) {
+          console.error('Failed to add process to queue');
+        }
+      } catch (error) {
+        console.error('Error adding process to queue:', error);
+      }
+
+      const processedImage = mapToProcessedImage(processRecord, 0);
       
       // Save to localStorage
       saveToLocalStorage(processedImage);
       
       return {
         data: processedImage,
-        message: 'Image process created successfully',
+        message: 'Image process created and queued successfully',
         success: true,
       };
     } catch (error) {

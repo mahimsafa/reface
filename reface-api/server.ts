@@ -6,12 +6,13 @@ import fs from 'fs';
 import session from 'express-session';
 import passport from './lib/passport';
 
+import { authenticate } from './middlewares/auth.middleware';
+import { config } from './lib/constants';
 import { initializeQueue, closeConnection } from './services/queue.service';
 import processImageRoutes from './routes/process-image.routes';
 import queueRoutes from './routes/queue.routes';
 import authRoutes from './routes/auth.routes';
-import { authenticate } from './middlewares/auth.middleware';
-import { config } from './lib/constants';
+import userRoutes from './routes/user.routes';
 
 const app = express();
 
@@ -78,18 +79,12 @@ process.on('SIGINT', async () => {
 
 // Routes
 app.use('/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/image-processes', processImageRoutes);
 app.use('/api/queue', queueRoutes);
 
 app.get('/', (req, res) => {
   res.send('Reface API is running');
-});
-
-app.get('/me', authenticate,(req, res) => {
-  res.json({
-    isAuthenticated: req.isAuthenticated(),
-    user: req.user,
-  });
 });
 
 app.listen(config.port, () => {

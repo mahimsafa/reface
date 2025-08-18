@@ -65,6 +65,7 @@ export async function deleteFile(filename: string): Promise<void> {
     await fs.promises.unlink(filePath);
   } catch (err) {
     // Ignore if file doesn't exist
+    // @ts-ignore
     if (err.code !== 'ENOENT') throw err;
   }
 }
@@ -141,9 +142,9 @@ export async function getProcessRecordById(id: number) {
 }
 
 export type UpdateProcessInput = Partial<{
-  sourceImageName: string;
-  targetImageName: string;
-  resultImageName: string | null;
+  sourceImage: string;
+  targetImage: string;
+  resultImage: string | null;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   outputPrefix: string;
   processStartedAt: Date | null;

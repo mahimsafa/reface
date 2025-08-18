@@ -33,6 +33,7 @@ router.put(
   upload.fields([
     { name: 'source_image', maxCount: 1 },
     { name: 'target_image', maxCount: 1 },
+    { name: 'result_image', maxCount: 1 },
   ]),
   updateImageProcess
 );
@@ -42,6 +43,7 @@ router.patch(
   upload.fields([
     { name: 'source_image', maxCount: 1 },
     { name: 'target_image', maxCount: 1 },
+    { name: 'result_image', maxCount: 1 },
   ]),
   updateImageProcess
 );

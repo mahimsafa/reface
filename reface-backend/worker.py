@@ -9,6 +9,7 @@ from datetime import datetime
 from pika.exceptions import AMQPConnectionError, ChannelClosedByBroker
 from lib.face_swap import FaceSwap
 from lib.image_utils import save_image, ensure_directory_exists
+import requests
 
 # Configure logging
 
@@ -126,11 +127,45 @@ class ImageProcessingWorker:
         # Convert from BGR to RGB (which is what our face swapper expects)
         return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
+    def update_process_status(self, process_id, status, result_image_path=None):
+        """Update process status via API"""
+        import requests
+        
+        url = f"http://localhost:5000/api/image-processes/{process_id}"
+        data = {
+            'status': status,
+            'process_ended_at': datetime.utcnow().isoformat() + 'Z'
+        }
+        
+        files = {}
+        if result_image_path and os.path.exists(result_image_path):
+            files['result_image'] = (
+                os.path.basename(result_image_path),
+                open(result_image_path, 'rb'),
+                'image/jpeg'
+            )
+        
+        try:
+            response = requests.patch(
+                url,
+                data=data,
+                files=files if files else None
+            )
+            response.raise_for_status()
+            logger.info(f"Successfully updated process {process_id} status to {status}")
+            return True
+        except requests.RequestException as e:
+            logger.error(f"Failed to update process {process_id} status: {str(e)}")
+            return False
+
     def process_message(self, ch, method, properties, body):
         """Process incoming message from the queue"""
         try:
             message = json.loads(body)
-            process_id = message.get('id', 'unknown')
+            process_id = message.get('id')
+            if not process_id:
+                raise ValueError("Missing process ID in message")
+                
             logger.info(f"Processing message: {process_id}")
             
             try:
@@ -166,11 +201,20 @@ class ImageProcessingWorker:
                 
                 logger.info(f"Successfully processed process {process_id}. Result saved to: {output_path}")
                 
+                # Update process status to completed and upload result image
+                if not self.update_process_status(process_id, 'completed', output_path):
+                    logger.error(f"Failed to update process {process_id} status")
+                
                 # Acknowledge the message
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 
             except Exception as e:
                 logger.error(f"Error processing message {process_id}: {str(e)}")
+                # Try to update status to failed
+                try:
+                    self.update_process_status(process_id, 'failed')
+                except Exception as update_err:
+                    logger.error(f"Failed to update process {process_id} status to failed: {str(update_err)}")
                 # Nack the message and don't requeue it
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
                 

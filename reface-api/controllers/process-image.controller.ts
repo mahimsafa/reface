@@ -116,20 +116,32 @@ export async function updateImageProcess(req: Request, res: Response) {
     if (process_ended_at !== undefined) updates.processEndedAt = process_ended_at ? new Date(process_ended_at) : null;
 
     // Optional new files
+    // @ts-ignore
     const source = (req.files as any)?.source_image?.[0];
+    // @ts-ignore
     const target = (req.files as any)?.target_image?.[0];
+    // @ts-ignore
+    const result = (req.files as any)?.result_image?.[0];
+    
     await ensureDirExists(IMAGES_DIR);
+    
     if (source) {
       const sourceName = uniqueFilename('source', source.originalname);
       const sourcePath = path.join(IMAGES_DIR, sourceName);
       await fs.promises.writeFile(sourcePath, source.buffer);
-      updates.sourceImagePath = sourcePath;
+      updates.sourceImage = `images/${sourceName}`;
     }
     if (target) {
       const targetName = uniqueFilename('target', target.originalname);
       const targetPath = path.join(IMAGES_DIR, targetName);
       await fs.promises.writeFile(targetPath, target.buffer);
-      updates.targetImagePath = targetPath;
+      updates.targetImage = `images/${targetName}`;
+    }
+    if (result) {
+      const resultName = uniqueFilename('result', result.originalname);
+      const resultPath = path.join(IMAGES_DIR, resultName);
+      await fs.promises.writeFile(resultPath, result.buffer);
+      updates.resultImage = `images/${resultName}`;
     }
 
     const updated = await updateProcessRecord(id, updates);

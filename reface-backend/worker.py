@@ -5,8 +5,7 @@ import pika
 import os
 import cv2
 import numpy as np
-from datetime import datetime
-from pika.exceptions import AMQPConnectionError, ChannelClosedByBroker
+from pika.exceptions import AMQPConnectionError
 from lib.face_swap import FaceSwap
 from lib.image_utils import save_image, ensure_directory_exists
 import requests
@@ -132,25 +131,20 @@ class ImageProcessingWorker:
         import requests
         
         url = f"http://localhost:5000/api/image-processes/{process_id}"
-        data = {
-            'status': status,
-            'process_ended_at': datetime.utcnow().isoformat() + 'Z'
+
+        files = {
+            'status': (None, status)  # ensure status is always in multipart form-data
         }
-        
-        files = {}
+
         if result_image_path and os.path.exists(result_image_path):
             files['result_image'] = (
                 os.path.basename(result_image_path),
                 open(result_image_path, 'rb'),
                 'image/jpeg'
             )
-        
+
         try:
-            response = requests.patch(
-                url,
-                data=data,
-                files=files if files else None
-            )
+            response = requests.patch(url, files=files)
             response.raise_for_status()
             logger.info(f"Successfully updated process {process_id} status to {status}")
             return True
@@ -167,8 +161,9 @@ class ImageProcessingWorker:
                 raise ValueError("Missing process ID in message")
                 
             logger.info(f"Processing message: {process_id}")
-            
             try:
+                if not self.update_process_status(process_id, 'processing'):
+                    logger.error(f"Failed to update process {process_id} status")
                 # Get image URLs and download them
                 base_url = "http://localhost:5000"
                 source_url = f"{base_url}/{message['sourceImage'].lstrip('/')}"

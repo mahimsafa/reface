@@ -107,13 +107,11 @@ export async function updateImageProcess(req: Request, res: Response) {
     if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
 
     const updates: any = {};
-    const { status, output_prefix, process_started_at, process_ended_at, result_image_path } = req.body || {};
+    const { status, output_prefix, result_image_path } = req.body || {};
 
     if (status) updates.status = status;
     if (output_prefix) updates.outputPrefix = output_prefix;
     if (result_image_path !== undefined) updates.resultImagePath = result_image_path || null;
-    if (process_started_at !== undefined) updates.processStartedAt = process_started_at ? new Date(process_started_at) : null;
-    if (process_ended_at !== undefined) updates.processEndedAt = process_ended_at ? new Date(process_ended_at) : null;
 
     // Optional new files
     // @ts-ignore
@@ -142,6 +140,19 @@ export async function updateImageProcess(req: Request, res: Response) {
       const resultPath = path.join(IMAGES_DIR, resultName);
       await fs.promises.writeFile(resultPath, result.buffer);
       updates.resultImage = `images/${resultName}`;
+    }
+    switch (status) {
+      case 'processing':
+        updates.processStartedAt = new Date();
+        break;
+      case 'completed':
+        updates.processEndedAt = new Date();
+        break;
+      case 'failed':
+        updates.processEndedAt = new Date();
+        break;
+      default:
+        break;
     }
 
     const updated = await updateProcessRecord(id, updates);

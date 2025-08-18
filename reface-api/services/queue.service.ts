@@ -153,12 +153,12 @@ class QueueService {
       
       if (success) {
         console.log(`[${new Date().toISOString()}] Message added to queue:`, {
-          processId: message.processId,
+          processId: message.id,
           queue: this.QUEUE_NAME,
         });
       } else {
         console.warn(`[${new Date().toISOString()}] Message not added to queue (backpressure):`, {
-          processId: message.processId,
+          processId: message.id,
           queue: this.QUEUE_NAME,
         });
       }

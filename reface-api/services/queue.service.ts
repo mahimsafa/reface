@@ -1,11 +1,13 @@
 import amqp, { Channel, Connection, Options } from 'amqplib';
 
 type QueueMessage = {
-  processId: string;
+  id: number;
   sourceImage: string;
   targetImage: string;
   outputPrefix: string;
-  timestamp: string;
+  sourceIndex: number;
+  targetIndex: number;
+  status: string;
   [key: string]: any;
 };
 
@@ -70,11 +72,13 @@ class QueueService {
       };
 
       console.log('Connecting to RabbitMQ...');
+      // @ts-ignore
       this.connection = await amqp.connect(options);
       if (!this.connection) {
         throw new Error('Failed to create RabbitMQ connection');
       }
-
+      
+      // @ts-ignore
       this.channel = await this.connection.createChannel();
       if (!this.channel) {
         throw new Error('Failed to create RabbitMQ channel');
@@ -88,10 +92,10 @@ class QueueService {
           'x-max-length': 10000, // Maximum number of messages in the queue
         },
       });
-
+      
       console.log('Successfully connected to RabbitMQ and queue is ready');
       this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
-
+      
       // Set up event handlers
       this.connection.on('error', this.handleConnectionError.bind(this));
       this.connection.on('close', this.handleConnectionClose.bind(this));
@@ -114,12 +118,12 @@ class QueueService {
       this.isConnecting = false;
     }
   }
-
+  
   private handleConnectionError(error: any): void {
     console.error('RabbitMQ connection error:', error);
     this.channel = null;
   }
-
+  
   private async handleConnectionClose(): Promise<void> {
     console.log('RabbitMQ connection closed');
     this.channel = null;
@@ -131,7 +135,7 @@ class QueueService {
       await this.initialize();
     }
   }
-
+  
   public async addToQueue(message: QueueMessage): Promise<boolean> {
     try {
       const channel = await this.ensureConnection();
@@ -165,7 +169,7 @@ class QueueService {
       throw error;
     }
   }
-
+  
   public async closeConnection(): Promise<void> {
     try {
       if (this.channel) {
@@ -173,6 +177,7 @@ class QueueService {
         this.channel = null;
       }
       if (this.connection) {
+        // @ts-ignore
         await this.connection.close();
         this.connection = null;
       }

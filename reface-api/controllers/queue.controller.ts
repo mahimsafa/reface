@@ -2,31 +2,51 @@ import { Request, Response } from 'express';
 import { addToQueue } from '../services/queue.service';
 
 interface QueueRequest {
-  processId: string;
+  id: number;
   sourceImage: string;
   targetImage: string;
+  sourceIndex?: number;
+  targetIndex?: number;
   outputPrefix?: string;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  processStartedAt?: string | null;
+  processEndedAt?: string | null;
+  timestamp?: string;
   [key: string]: any;
 }
 
 export const addToProcessingQueue = async (req: Request, res: Response) => {
   try {
-    const { processId, sourceImage, targetImage, outputPrefix, ...rest } = req.body as QueueRequest;
+    const { id, sourceImage, targetImage, outputPrefix, sourceIndex = 0, targetIndex = 0, ...rest } = req.body as QueueRequest;
     
-    if (!processId || !sourceImage || !targetImage) {
+    if (!id || !sourceImage || !targetImage || sourceIndex === undefined || targetIndex === undefined) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: processId, sourceImage, and targetImage are required',
+        error: 'Missing required fields: id, sourceImage, targetImage, sourceIndex, and targetIndex are required',
+        missingFields: [
+          ...(!id ? ['id'] : []),
+          ...(!sourceImage ? ['sourceImage'] : []),
+          ...(!targetImage ? ['targetImage'] : []),
+          ...(sourceIndex === undefined ? ['sourceIndex'] : []),
+          ...(targetIndex === undefined ? ['targetIndex'] : [])
+        ]
       });
     }
 
+    const timestamp = new Date().toISOString();
     const message = {
-      processId,
+      id,
       sourceImage,
       targetImage,
-      outputPrefix: outputPrefix || `process_${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      ...rest, // Include any additional fields
+      sourceIndex: Number(sourceIndex) || 0,
+      targetIndex: Number(targetIndex) || 0,
+      outputPrefix: outputPrefix || 'result',
+      status: 'pending',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...rest,
     };
 
     const success = await addToQueue(message);
@@ -43,7 +63,7 @@ export const addToProcessingQueue = async (req: Request, res: Response) => {
       success: true,
       message: 'Process added to queue',
       data: {
-        processId: message.processId,
+        processId: message.id,
         status: 'queued',
         timestamp: message.timestamp,
       },

@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
-import uploadRoutes from './routes/upload.routes';
+import uploadRoutes from './routes/process-image.routes';
 
 const app = express();
 

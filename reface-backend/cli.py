@@ -96,6 +96,17 @@ def cmd_detect(args):
         print(f"Annotated image saved to {args.output}")
 
 
+def cmd_db(args):
+    import subprocess
+    cmd = args.db_command
+    if cmd == "upgrade":
+        subprocess.run(["uv", "run", "alembic", "upgrade", "head"])
+    elif cmd == "downgrade":
+        subprocess.run(["uv", "run", "alembic", "downgrade", "-1"])
+    elif cmd == "history":
+        subprocess.run(["uv", "run", "alembic", "history"])
+
+
 def main():
     parser = argparse.ArgumentParser(description="Reface CLI - Face swap and restore")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -120,6 +131,13 @@ def main():
     p.add_argument("--output", help="Save annotated image with bounding boxes")
     p.add_argument("--download", action="store_true", help="Download model if missing")
 
+    # db
+    p = sub.add_parser("db", help="Database migration commands")
+    db_sub = p.add_subparsers(dest="db_command", required=True)
+    db_sub.add_parser("upgrade", help="Apply all pending migrations")
+    db_sub.add_parser("downgrade", help="Rollback one migration")
+    db_sub.add_parser("history", help="List migration history")
+
     args = parser.parse_args()
 
     if args.command == "swap":
@@ -128,6 +146,8 @@ def main():
         cmd_restore(args)
     elif args.command == "detect":
         cmd_detect(args)
+    elif args.command == "db":
+        cmd_db(args)
 
 
 if __name__ == "__main__":

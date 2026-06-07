@@ -15,11 +15,6 @@ class Base(DeclarativeBase):
     pass
 
 
-def init_db():
-    import core.models
-    Base.metadata.create_all(bind=engine)
-
-
 def get_db():
     db = SessionLocal()
     try:

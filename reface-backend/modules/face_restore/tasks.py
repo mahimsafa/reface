@@ -8,7 +8,7 @@ import os
 from sqlalchemy.sql import func
 
 
-@celery_app.task(bind=True, max_retries=3, name="process_face_restore")
+@celery_app.task(bind=True, max_retries=3, name="process_face_restore", autoretry_for=(OSError, ConnectionError))
 def process_face_restore_task(self, process_id: int, source_path: str):
     db = SessionLocal()
     record = None
@@ -36,10 +36,19 @@ def process_face_restore_task(self, process_id: int, source_path: str):
         record.finished_at = func.now()
         db.commit()
 
+    except (ValueError, RuntimeError) as exc:
+        if record:
+            record.status = "failed"
+            record.error_message = str(exc)
+            record.finished_at = func.now()
+            db.commit()
+        raise
+
     except Exception as exc:
         if record:
             record.status = "failed"
             record.error_message = str(exc)
+            record.finished_at = func.now()
             db.commit()
         raise self.retry(exc=exc, countdown=5)
 

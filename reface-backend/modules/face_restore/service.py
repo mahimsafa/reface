@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from insightface.app import FaceAnalysis
+from core.image_utils import ensure_bgr
 
 
 class FaceRestoreService:
@@ -41,6 +42,7 @@ class FaceRestoreService:
         if self.model is None:
             raise RuntimeError("Restoration model not initialized")
 
+        image = ensure_bgr(image)
         rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         try:

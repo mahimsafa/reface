@@ -8,7 +8,7 @@ import os
 from sqlalchemy.sql import func
 
 
-@celery_app.task(bind=True, max_retries=3, name="process_face_swap")
+@celery_app.task(bind=True, max_retries=3, name="process_face_swap", autoretry_for=(OSError, ConnectionError))
 def process_face_swap_task(self, process_id: int, source_path: str, target_path: str, restore: bool = False):
     db = SessionLocal()
     record = None
@@ -24,7 +24,7 @@ def process_face_swap_task(self, process_id: int, source_path: str, target_path:
         target_img = load_image(target_path)
 
         swapper = FaceSwapService(model_path=settings.MODEL_PATH)
-        result = swapper.swap_face(source_img, target_img)
+        result = swapper.swap_face(source_img, target_img, source_path=source_path, target_path=target_path)
 
         if restore:
             from modules.face_restore.service import FaceRestoreService
@@ -42,10 +42,19 @@ def process_face_swap_task(self, process_id: int, source_path: str, target_path:
         record.finished_at = func.now()
         db.commit()
 
+    except (ValueError, RuntimeError) as exc:
+        if record:
+            record.status = "failed"
+            record.error_message = str(exc)
+            record.finished_at = func.now()
+            db.commit()
+        raise
+
     except Exception as exc:
         if record:
             record.status = "failed"
             record.error_message = str(exc)
+            record.finished_at = func.now()
             db.commit()
         raise self.retry(exc=exc, countdown=5)
 

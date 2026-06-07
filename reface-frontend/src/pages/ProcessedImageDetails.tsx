@@ -1,287 +1,169 @@
-import React from "react";
-import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  Calendar,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Loader,
-  Hash,
-} from "lucide-react";
-import { api } from "../lib/api";
-import { ProcessedImage } from "../types";
-import { timeTaken } from "../lib/utils";
+import { useParams, Link } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
+import { ArrowLeft, Clock, CheckCircle2, XCircle, Loader2, Hash, Calendar, Sparkles } from "lucide-react"
+import { api } from "../lib/api"
+import { formatDate, timeTaken } from "../lib/utils"
+import { Button } from "../components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
+import { Badge } from "../components/ui/badge"
 
-const ProcessedImageDetails: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
+  pending: { label: "Pending", variant: "outline", icon: <Clock className="w-4 h-4" /> },
+  queued: { label: "Queued", variant: "outline", icon: <Clock className="w-4 h-4" /> },
+  processing: { label: "Processing", variant: "secondary", icon: <Loader2 className="w-4 h-4 animate-spin" /> },
+  completed: { label: "Completed", variant: "default", icon: <CheckCircle2 className="w-4 h-4" /> },
+  failed: { label: "Failed", variant: "destructive", icon: <XCircle className="w-4 h-4" /> },
+}
+
+export default function ProcessedImageDetails() {
+  const { id } = useParams<{ id: string }>()
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["processedImage", id],
-    queryFn: () => api.getProcessedImage(id!),
+    queryFn: () => api.getProcessedImage(Number(id)),
     enabled: !!id,
     refetchInterval: (query) => {
-      // Only refetch if status is not 'completed'
-      return query.state.data?.data.status !== "completed" ? 5000 : false;
+      const state = query.state.data
+      return state && (state.status === "pending" || state.status === "queued" || state.status === "processing") ? 3000 : false
     },
-    retry: (failureCount, error) => {
-      if (error.message.includes("404")) {
-        return false;
-      }
-      // Otherwise, use default retry behavior (up to 3 attempts)
-      return failureCount < 3;
-    },
-  });
-
-  const getStatusIcon = (status: ProcessedImage["status"]) => {
-    switch (status) {
-      case "pending":
-        return <Clock className="w-6 h-6 text-yellow-500" />;
-      case "processing":
-        return <Loader className="w-6 h-6 text-blue-500 animate-spin" />;
-      case "completed":
-        return <CheckCircle className="w-6 h-6 text-green-500" />;
-      case "failed":
-        return <XCircle className="w-6 h-6 text-red-500" />;
-      default:
-        return null;
-    }
-  };
-
-  const getStatusColor = (status: ProcessedImage["status"]) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "processing":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "completed":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "failed":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
+  })
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading image details...</p>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
-    );
+    )
   }
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 flex items-center justify-center">
-        <div className="text-center">
-          <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-gray-600 mb-4">Image not found</p>
-          <Link
-            to="/processed"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-teal-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-teal-700 transition-all duration-200"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to List
-          </Link>
-        </div>
+      <div className="text-center py-20 space-y-4">
+        <XCircle className="w-12 h-12 text-destructive mx-auto" />
+        <p className="text-muted-foreground">Process not found</p>
+        <Link to="/processed"><Button variant="outline" className="gap-2"><ArrowLeft className="w-4 h-4" /> Back</Button></Link>
       </div>
-    );
+    )
   }
 
-  const image = data.data;
-  console.log(image);
+  const cfg = statusConfig[data.status] || { label: data.status, variant: "outline" as const, icon: null }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 py-12 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Link
-            to="/processed"
-            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back to List
-          </Link>
-          <div className="h-6 w-px bg-gray-300" />
-          <h1 className="text-3xl font-bold text-gray-900">
-            Face Swap Details
-          </h1>
-        </div>
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="flex items-center gap-4">
+        <Link to="/processed">
+          <Button variant="ghost" size="sm" className="gap-2">
+            <ArrowLeft className="w-4 h-4" /> Back
+          </Button>
+        </Link>
+        <h1 className="text-2xl font-bold tracking-tight capitalize">
+          {data.process_type === "face_swap" ? "Face Swap" : "Face Restore"} #{data.id}
+        </h1>
+        <Badge variant={cfg.variant} className="flex items-center gap-1">
+          {cfg.icon}
+          {cfg.label}
+        </Badge>
+      </div>
 
-        {/* Status Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {getStatusIcon(image.status)}
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Face Swap #{image.id}
-                </h2>
-                <span
-                  className={`inline-block px-3 py-1 rounded-full text-sm font-semibold border mt-2 ${getStatusColor(
-                    image.status
-                  )}`}
-                >
-                  {image.status}
-                </span>
+      {data.status === "processing" && (
+        <Card className="bg-secondary/50">
+          <CardContent className="py-4 flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <p className="text-sm">Processing your image...</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {data.status === "failed" && data.error_message && (
+        <Card className="border-destructive">
+          <CardContent className="py-4 flex items-center gap-3">
+            <XCircle className="w-5 h-5 text-destructive" />
+            <p className="text-sm text-destructive">{data.error_message}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid md:grid-cols-3 gap-6">
+        {data.process_type === "face_swap" ? (
+          <>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Source Image</label>
+              <div className="aspect-square rounded-lg overflow-hidden border bg-muted">
+                {data.source_image && (
+                  <img src={api.getImageUrl(data.source_image)} alt="Source" className="w-full h-full object-cover" />
+                )}
               </div>
             </div>
-            <div className="text-right">
-              <div className="flex items-center gap-2 text-gray-600 mb-2">
-                <Hash className="w-4 h-4" />
-                {/* generate a total time taken in the format of 1h 2m 3s from image.processStarted to image.processEnded */}
-                <span className="font-mono text-sm">
-                  {timeTaken(image.processStarted, image.processEnded)}
-                </span>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Target Image</label>
+              <div className="aspect-square rounded-lg overflow-hidden border bg-muted">
+                {data.target_image && (
+                  <img src={api.getImageUrl(data.target_image)} alt="Target" className="w-full h-full object-cover" />
+                )}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Images Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-8">
-          {/* Source Image */}
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="aspect-square bg-gray-100">
-              <img
-                src={image.sourceImage}
-                alt="Source"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Source Image
-              </h3>
-              <p className="text-gray-600">The original face to be swapped</p>
-            </div>
-          </div>
-
-          {/* Target Image */}
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="aspect-square bg-gray-100">
-              <img
-                src={image.targetImage}
-                alt="Target"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Target Image
-              </h3>
-              <p className="text-gray-600">The destination for the face swap</p>
-            </div>
-          </div>
-
-          {/* Result Image */}
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="aspect-square bg-gray-100 flex items-center justify-center">
-              {image.resultImage ? (
-                <img
-                  src={image.resultImage}
-                  alt="Result"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                    {getStatusIcon(image.status)}
-                  </div>
-                  <p className="text-gray-500 capitalize">
-                    {image.status === "processing"
-                      ? "Processing..."
-                      : image.status}
-                  </p>
-                </div>
+          </>
+        ) : (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Original Image</label>
+            <div className="aspect-square rounded-lg overflow-hidden border bg-muted">
+              {data.source_image && (
+                <img src={api.getImageUrl(data.source_image)} alt="Original" className="w-full h-full object-cover" />
               )}
             </div>
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Result Image
-              </h3>
-              <p className="text-gray-600">
-                {image.resultImage
-                  ? "Face swap completed"
-                  : "Processing in progress"}
-              </p>
-            </div>
           </div>
-        </div>
+        )}
 
-        {/* Process Information */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">
-            Process Information
-          </h3>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Hash className="w-5 h-5 text-gray-500" />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Image ID</p>
-                  <p className="text-gray-900 font-mono">{image.id}</p>
-                </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-muted-foreground">Result</label>
+          <div className="aspect-square rounded-lg overflow-hidden border bg-muted flex items-center justify-center">
+            {data.result_image ? (
+              <img src={api.getImageUrl(data.result_image)} alt="Result" className="w-full h-full object-cover" />
+            ) : (
+              <div className="text-center text-muted-foreground">
+                {data.status === "completed" ? (
+                  <XCircle className="w-8 h-8 mx-auto" />
+                ) : (
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto" />
+                )}
+                <p className="text-sm mt-2 capitalize">{data.status}</p>
               </div>
-              <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-blue-500" />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Created</p>
-                  <p className="text-gray-900">{formatDate(image.createdAt)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-blue-500" />
-                <div>
-                  <p className="text-sm font-medium text-gray-700">
-                    Process Started
-                  </p>
-                  <p className="text-gray-900">
-                    {image.processStarted && formatDate(image.processStarted)}
-                  </p>
-                </div>
-              </div>
-
-              {image.processEnded && (
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      Process Completed
-                    </p>
-                    <p className="text-gray-900">
-                      {formatDate(image.processEnded)}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
-    </div>
-  );
-};
 
-export default ProcessedImageDetails;
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <Hash className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">ID:</span>
+              <span className="font-mono">{data.id}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Created:</span>
+              <span>{formatDate(data.created_at)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Duration:</span>
+              <span>{timeTaken(data.created_at, data.finished_at)}</span>
+            </div>
+            {data.process_type === "face_swap" && (
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Restore:</span>
+                <span>{data.restore_enabled ? "Enabled" : "Disabled"}</span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

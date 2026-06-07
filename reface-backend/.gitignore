@@ -1,6 +1,9 @@
-images/*
+*.db
+*.pyc
+__pycache__/
+.venv/
+.env
+uploads/images/*
+uploads/output/*
 models/*
-output/*
-.venv
-__pycache__
-reface.db
+!models/.gitkeep

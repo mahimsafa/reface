@@ -1,422 +1,174 @@
-import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link, useSearchParams } from "react-router-dom";
-import {
-  Clock,
-  CheckCircle,
-  XCircle,
-  Loader,
-  Eye,
-  // Calendar,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-  CalendarPlus,
-} from "lucide-react";
-import { api } from "../lib/api";
-import { ProcessedImage, FilterOptions } from "../types";
+import { useState } from "react"
+import { Link, useSearchParams } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
+import { Clock, CheckCircle2, XCircle, Loader2, Eye, ArrowLeft, ArrowRight, Filter } from "lucide-react"
+import { api } from "../lib/api"
+import { formatDate } from "../lib/utils"
+import { Button } from "../components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
+import { Badge } from "../components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 
-const ProcessedImagesList: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  
-  // Parse URL parameters or use defaults
-  const getInitialFilters = (): FilterOptions => {
-    // Define valid sort fields and statuses with proper types
-    type SortField = 'createdAt' | 'updatedAt' | 'processStartedAt' | 'processEndedAt';
-    type Status = 'pending' | 'processing' | 'completed' | 'failed';
-    
-    const validSortFields: readonly SortField[] = ['createdAt', 'updatedAt', 'processStartedAt', 'processEndedAt'];
-    const validStatuses: readonly Status[] = ['pending', 'processing', 'completed', 'failed'];
-    
-    // Helper function to check if a value is a valid sort field
-    const isValidSortField = (value: string | null): value is SortField => 
-      value !== null && validSortFields.includes(value as SortField);
-    
-    // Helper function to check if a value is a valid status
-    const isValidStatus = (value: string | null): value is Status => 
-      value !== null && validStatuses.includes(value as Status);
-    
-    // Get and validate parameters
-    const sortBy = searchParams.get('sortBy');
-    const sortOrder = searchParams.get('sortOrder');
-    const status = searchParams.get('status');
-    const page = Number(searchParams.get('page'));
-    const limit = Number(searchParams.get('limit'));
-    
-    return {
-      sortBy: isValidSortField(sortBy) ? sortBy : 'createdAt',
-      sortOrder: sortOrder === 'asc' ? 'asc' : 'desc',
-      page: Number.isInteger(page) && page > 0 ? page : 1,
-      limit: [10, 25, 50, 100].includes(limit) ? limit : 10,
-      status: isValidStatus(status) ? status : undefined,
-    };
-  };
-  
-  const [filters, setFilters] = useState<FilterOptions>(getInitialFilters);
+const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
+  pending: { label: "Pending", variant: "outline", icon: <Clock className="w-4 h-4" /> },
+  queued: { label: "Queued", variant: "outline", icon: <Clock className="w-4 h-4" /> },
+  processing: { label: "Processing", variant: "secondary", icon: <Loader2 className="w-4 h-4 animate-spin" /> },
+  completed: { label: "Completed", variant: "default", icon: <CheckCircle2 className="w-4 h-4" /> },
+  failed: { label: "Failed", variant: "destructive", icon: <XCircle className="w-4 h-4" /> },
+}
+
+export default function ProcessedImagesList() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const page = Number(searchParams.get("page")) || 1
+  const status = searchParams.get("status") || ""
+  const limit = 12
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["processedImages", filters],
-    queryFn: () => api.getProcessedImages(filters),
+    queryKey: ["processedImages", page, status],
+    queryFn: () => api.getProcessedImages({ status: status || undefined, page, limit }),
     refetchInterval: 5000,
-    // refetchOnWindowFocus: false,
-  });
+  })
 
-  const getStatusIcon = (status: ProcessedImage["status"]) => {
-    switch (status) {
-      case "pending":
-        return <Clock className="w-5 h-5 text-yellow-500" />;
-      case "processing":
-        return <Loader className="w-5 h-5 text-blue-500 animate-spin" />;
-      case "completed":
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case "failed":
-        return <XCircle className="w-5 h-5 text-red-500" />;
-      default:
-        return null;
-    }
-  };
+  const totalPages = data ? Math.ceil(data.total / limit) : 0
 
-  const getStatusColor = (status: ProcessedImage["status"]) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "processing":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "completed":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "failed":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Update URL when filters change
-  useEffect(() => {
-    const params = new URLSearchParams();
-    
-    // Only add parameters that are not default values
-    if (filters.sortBy !== 'createdAt') params.set('sortBy', filters.sortBy);
-    if (filters.sortOrder !== 'desc') params.set('sortOrder', filters.sortOrder);
-    if (filters.page !== 1) params.set('page', filters.page.toString());
-    if (filters.limit !== 10) params.set('limit', filters.limit.toString());
-    if (filters.status) params.set('status', filters.status);
-    
-    // Update URL without causing a navigation
-    setSearchParams(params, { replace: true });
-  }, [filters, setSearchParams]);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleFilterChange = (key: keyof FilterOptions, value: any) => {
-    setFilters((prev) => {
-      const newFilters = {
-        ...prev,
-        [key]: value,
-        page: key !== "page" ? 1 : value, // Reset to page 1 when changing other filters
-      };
-      return newFilters;
-    });
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setFilters((prev) => ({ ...prev, page: newPage }));
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading processed images...</p>
-        </div>
-      </div>
-    );
+  const updateFilter = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams)
+    if (value) params.set(key, value)
+    else params.delete(key)
+    if (key !== "page") params.set("page", "1")
+    setSearchParams(params, { replace: true })
   }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 flex items-center justify-center">
-        <div className="text-center">
-          <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-gray-600">Failed to load processed images</p>
-        </div>
-      </div>
-    );
-  }
-
-  const { images, total, totalPages } = data?.data || {
-    images: [],
-    total: 0,
-    totalPages: 0,
-  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 py-12 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Processed Images
-          </h1>
-          <p className="text-lg text-gray-600">
-            Track the status of your face swap operations
-          </p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Process History</h1>
+          <p className="text-muted-foreground">View all your face swap and restore operations</p>
         </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-gray-600" />
-            <h3 className="text-lg font-semibold text-gray-900">
-              Filters & Sorting
-            </h3>
-          </div>
-
-          <div className="grid md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
-              <select
-                value={filters.status || ""}
-                onChange={(e) =>
-                  handleFilterChange("status", e.target.value || undefined)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="processing">Processing</option>
-                <option value="completed">Completed</option>
-                <option value="failed">Failed</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Sort By
-              </label>
-              <select
-                value={filters.sortBy}
-                onChange={(e) =>
-                  handleFilterChange(
-                    "sortBy",
-                    e.target.value as "processStarted" | "processEnded"
-                  )
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="createdAt">Created At</option>
-                <option value="updatedAt">Updated At</option>
-                <option value="processStartedAt">Process Start Time</option>
-                <option value="processEndedAt">Process End Time</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Order
-              </label>
-              <select
-                value={filters.sortOrder}
-                onChange={(e) =>
-                  handleFilterChange(
-                    "sortOrder",
-                    e.target.value as "asc" | "desc"
-                  )
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="desc">Newest First</option>
-                <option value="asc">Oldest First</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Per Page
-              </label>
-              <select
-                value={filters.limit}
-                onChange={(e) =>
-                  handleFilterChange("limit", parseInt(e.target.value))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value={5}>5 items</option>
-                <option value={10}>10 items</option>
-                <option value={20}>20 items</option>
-                <option value={50}>50 items</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {images.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Eye className="w-12 h-12 text-gray-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              No processed images found
-            </h3>
-            <p className="text-gray-600 mb-6">
-              {filters.status
-                ? `No images with status "${filters.status}"`
-                : "Upload some images to see them here"}
-            </p>
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-teal-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-teal-700 transition-all duration-200"
-            >
-              Upload Images
-            </Link>
-          </div>
-        ) : (
-          <>
-            {/* Results Summary */}
-            <div className="mb-6 text-center">
-              <p className="text-gray-600">
-                Showing {(filters.page - 1) * filters.limit + 1} to{" "}
-                {Math.min(filters.page * filters.limit, total)} of {total}{" "}
-                results
-              </p>
-            </div>
-
-            {/* Images Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-              {images.map((image) => (
-                <Link
-                  key={image.id}
-                  to={`/processed/${image.id}`}
-                  className="group block bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
-                >
-                  <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                    {image.resultImage ? (
-                      <img
-                        src={image.resultImage}
-                        alt="Result"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                            {getStatusIcon(image.status)}
-                          </div>
-                          <p className="text-gray-500 capitalize">
-                            {image.status}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    <div className="absolute top-4 right-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
-                          image.status
-                        )}`}
-                      >
-                        {image.status.charAt(0).toUpperCase() +
-                          image.status.slice(1)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">
-                        Face Swap #{image.id}
-                      </h3>
-                      <span className="text-sm text-gray-500">
-                        ID: {image.id.slice(-6)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                      <CalendarPlus className="w-4 h-4" />
-                      <span>
-                        Created:{" "}
-                        {image.createdAt ? formatDate(image.createdAt) : "N/A"}
-                      </span>
-                    </div>
-
-                    {/* <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>Started: {image.processStarted ? formatDate(image.processStarted) : 'N/A'}</span>
-                    </div>
-                    
-                    {image.processEnded && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <CheckCircle className="w-4 h-4" />
-                        <span>Completed: {image.processEnded ? formatDate(image.processEnded) : 'N/A'}</span>
-                      </div>
-                    )} */}
-
-                    <div className="mt-4 flex items-center gap-2 text-blue-600 group-hover:text-blue-700">
-                      <Eye className="w-4 h-4" />
-                      <span className="text-sm font-medium">View Details</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => handlePageChange(filters.page - 1)}
-                    disabled={filters.page === 1}
-                    className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Previous
-                  </button>
-
-                  <div className="flex items-center gap-2">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                      (page) => (
-                        <button
-                          key={page}
-                          onClick={() => handlePageChange(page)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                            page === filters.page
-                              ? "bg-blue-600 text-white"
-                              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      )
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => handlePageChange(filters.page + 1)}
-                    disabled={filters.page === totalPages}
-                    className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                  >
-                    Next
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+        <Link to="/">
+          <Button variant="outline" className="gap-2">
+            <ArrowLeft className="w-4 h-4" /> New Swap
+          </Button>
+        </Link>
       </div>
-    </div>
-  );
-};
 
-export default ProcessedImagesList;
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <Select value={status} onValueChange={(v) => updateFilter("status", v)}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="All status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value=" ">All status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="queued">Queued</SelectItem>
+              <SelectItem value="processing">Processing</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : error ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <XCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+            <p className="text-muted-foreground">Failed to load processes</p>
+          </CardContent>
+        </Card>
+      ) : !data || data.items.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Eye className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground mb-4">No processes found</p>
+            <Link to="/">
+              <Button>Start a Face Swap</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {data.items.map((record) => {
+              const cfg = statusConfig[record.status] || { label: record.status, variant: "outline" as const, icon: null }
+              return (
+                <Link key={record.id} to={`/processed/${record.id}`}>
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base capitalize">
+                          {record.process_type === "face_swap" ? "Face Swap" : "Face Restore"} #{record.id}
+                        </CardTitle>
+                        <Badge variant={cfg.variant} className="flex items-center gap-1">
+                          {cfg.icon}
+                          {cfg.label}
+                        </Badge>
+                      </div>
+                      <CardDescription>{formatDate(record.created_at)}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-2 h-24">
+                        {record.source_image && (
+                          <img
+                            src={api.getImageUrl(record.source_image)}
+                            alt="Source"
+                            className="w-full h-full object-cover rounded"
+                          />
+                        )}
+                        {record.target_image && (
+                          <img
+                            src={api.getImageUrl(record.target_image)}
+                            alt="Target"
+                            className="w-full h-full object-cover rounded"
+                          />
+                        )}
+                        {record.result_image && (
+                          <img
+                            src={api.getImageUrl(record.result_image)}
+                            alt="Result"
+                            className="w-full h-full object-cover rounded col-span-2"
+                          />
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              )
+            })}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => updateFilter("page", String(page - 1))}
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => updateFilter("page", String(page + 1))}
+              >
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}

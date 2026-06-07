@@ -7,3 +7,5 @@ uploads/images/*
 uploads/output/*
 models/*
 !models/.gitkeep
+
+/gfpgan/*

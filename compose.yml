@@ -1,21 +1,69 @@
 services:
   rabbitmq:
-    image: rabbitmq:3.13-management   # includes management plugin
+    image: rabbitmq:3.13-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"   # RabbitMQ broker (AMQP)
-      - "15672:15672" # Management dashboard
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
-      - rabbitmq_net
+      - reface_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - reface_net
+
+  backend:
+    build:
+      context: ./reface-backend
+      dockerfile: Dockerfile
+    container_name: reface-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=sqlite:///./reface.db
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - reface_net
+
+  celery-worker:
+    build:
+      context: ./reface-backend
+      dockerfile: Dockerfile
+    container_name: reface-celery-worker
+    command: ["uv", "run", "celery", "-A", "celery_app", "worker", "--loglevel=info", "--concurrency=1"]
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=sqlite:///./reface.db
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - reface_net
 
 volumes:
   rabbitmq_data:
+  uploads_data:
 
 networks:
-  rabbitmq_net:
+  reface_net:
     driver: bridge

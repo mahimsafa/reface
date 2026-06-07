@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
     MODEL_PATH: str = "models/inswapper_128.onnx"
-    CODEFORMER_PATH: str = "models/CodeFormer/codeformer.pth"
+    CODEFORMER_PATH: str = "models/codeformer-v0.1.0.pth"
     UPLOAD_DIR: str = "uploads"
     OUTPUT_DIR: str = "uploads/output"
     IMAGES_DIR: str = "uploads/images"

@@ -1,60 +1,138 @@
 import cv2
+import torch
 import numpy as np
-from insightface.app import FaceAnalysis
-from core.image_utils import ensure_bgr
+
+from abc import ABC, abstractmethod
+
+from basicsr.archs.rrdbnet_arch import RRDBNet
+from facexlib.utils.face_restoration_helper import FaceRestoreHelper
+from realesrgan import RealESRGANer
+
+from modules.face_restore.codeformer_arch import CodeFormer
+
+
+class BaseRestorer(ABC):
+    @abstractmethod
+    def restore_face(self, image: np.ndarray) -> np.ndarray:
+        ...
+
+
+class CodeFormerRestorer(BaseRestorer):
+    def __init__(self, fidelity=0.7, upscale=2):
+        self.fidelity = fidelity
+        self.upscale = upscale
+
+        self.device = (
+            "mps"
+            if torch.backends.mps.is_available()
+            else "cpu"
+        )
+
+        self.net = CodeFormer(
+            dim_embd=512,
+            codebook_size=1024,
+            n_head=8,
+            n_layers=9,
+            connect_list=["32", "64", "128", "256"]
+        ).to(self.device)
+
+        checkpoint = torch.load(
+            "models/codeformer-v0.1.0.pth",
+            map_location=self.device
+        )
+
+        self.net.load_state_dict(checkpoint["params_ema"])
+        self.net.eval()
+
+        bg_model = RRDBNet(
+            num_in_ch=3, num_out_ch=3, num_feat=64,
+            num_block=23, num_grow_ch=32, scale=2
+        )
+
+        model_url = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"
+        self.bg_upsampler = RealESRGANer(
+            scale=2,
+            model_path=model_url,
+            model=bg_model,
+            tile=0,
+            tile_pad=10,
+            pre_pad=0,
+            half=False,
+            device=self.device,
+        )
+
+    def restore_face(self, image: np.ndarray) -> np.ndarray:
+        if len(image.shape) == 3 and image.shape[2] == 4:
+            image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+        elif len(image.shape) == 2:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+
+        face_helper = FaceRestoreHelper(
+            upscale_factor=self.upscale,
+            face_size=512,
+            crop_ratio=(1, 1),
+            det_model="retinaface_resnet50",
+            save_ext="png",
+            use_parse=True,
+            device=self.device,
+        )
+
+        face_helper.clean_all()
+        face_helper.read_image(image)
+
+        face_helper.get_face_landmarks_5(
+            only_center_face=False,
+            resize=640,
+            eye_dist_threshold=5,
+        )
+
+        face_helper.align_warp_face()
+
+        for cropped_face in face_helper.cropped_faces:
+            face_tensor = (
+                torch.from_numpy(cropped_face)
+                .float()
+                .permute(2, 0, 1)
+                .unsqueeze(0)
+                / 255.0
+            )
+
+            face_tensor = (face_tensor * 2 - 1).to(self.device)
+
+            with torch.no_grad():
+                restored_face = self.net(
+                    face_tensor, w=self.fidelity, adain=True
+                )[0]
+
+            restored_face = (
+                restored_face
+                .squeeze(0)
+                .permute(1, 2, 0)
+                .cpu()
+                .numpy()
+            )
+
+            restored_face = (
+                ((restored_face + 1) / 2).clip(0, 1) * 255
+            ).astype("uint8")
+
+            face_helper.add_restored_face(restored_face)
+
+        face_helper.get_inverse_affine(None)
+        return face_helper.paste_faces_to_input_image()
 
 
 class FaceRestoreService:
-    def __init__(self):
-        self.model = None
-        self.detector = None
-        self._initialize()
-
-    def _initialize(self):
-        self.detector = FaceAnalysis(
-            name="buffalo_l",
-            providers=["CPUExecutionProvider"],
-            download=False,
-            download_zip=False,
-        )
-        self.detector.prepare(ctx_id=0, det_size=(640, 640))
-
-        self._load_restoration_model()
-
-    def _load_restoration_model(self):
-        try:
-            from gfpgan import GFPGANer
-            self.model = GFPGANer(
-                model_path="models/GFPGANv1.4.pth",
-                upscale=1,
-                arch="clean",
-                channel_multiplier=2,
-                bg_upsampler=None,
-            )
-        except ImportError:
-            raise RuntimeError(
-                "Face restoration requires gfpgan. Install with: pip install gfpgan"
-            )
-        except Exception as e:
-            raise RuntimeError(f"Failed to load restoration model: {e}")
+    def __init__(self, restorer: BaseRestorer | None = None):
+        if restorer is not None:
+            self.restorer = restorer
+        else:
+            self.restorer = CodeFormerRestorer()
 
     def restore_face(self, image: np.ndarray) -> np.ndarray:
-        if self.model is None:
-            raise RuntimeError("Restoration model not initialized")
+        return self.restorer.restore_face(image)
 
-        image = ensure_bgr(image)
-        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        try:
-            _, _, restored = self.model.enhance(
-                rgb,
-                has_aligned=False,
-                only_center_face=False,
-                paste_back=True,
-            )
-            if restored is None:
-                return image
-            result = cv2.cvtColor(restored, cv2.COLOR_RGB2BGR)
-            return result
-        except Exception as e:
-            raise RuntimeError(f"Face restoration failed: {e}")
+    def restore(self, image_path: str, output_path: str):
+        img = cv2.imread(image_path)
+        result = self.restore_face(img)
+        cv2.imwrite(output_path, result)

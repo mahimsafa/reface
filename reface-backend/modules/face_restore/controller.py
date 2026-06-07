@@ -66,8 +66,8 @@ async def list_restore_processes(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
     status: str | None = Query(None),
-    sort_by: str = Query("created_at", regex=r"^(created_at|finished_at)$"),
-    sort_order: str = Query("desc", regex=r"^(asc|desc)$"),
+    sort_by: str = Query("created_at", pattern=r"^(created_at|finished_at)$"),
+    sort_order: str = Query("desc", pattern=r"^(asc|desc)$"),
     db: Session = Depends(get_db),
 ):
     q = db.query(ProcessRecord).filter(ProcessRecord.process_type == "face_restore")

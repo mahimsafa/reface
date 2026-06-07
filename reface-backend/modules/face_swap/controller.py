@@ -85,8 +85,8 @@ async def list_processes(
     limit: int = Query(10, ge=1, le=100),
     status: str | None = Query(None),
     process_type: str | None = Query(None),
-    sort_by: str = Query("created_at", regex=r"^(created_at|finished_at)$"),
-    sort_order: str = Query("desc", regex=r"^(asc|desc)$"),
+    sort_by: str = Query("created_at", pattern=r"^(created_at|finished_at)$"),
+    sort_order: str = Query("desc", pattern=r"^(asc|desc)$"),
     db: Session = Depends(get_db),
 ):
     q = db.query(ProcessRecord)

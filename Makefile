@@ -23,10 +23,13 @@ venv:
 	uv venv .venv
 
 install-backend:
-	.venv/bin/uv pip install -r $(BACKEND_DIR)/requirements.txt
+	uv pip install -r $(BACKEND_DIR)/requirements.txt
 
 backend:
-	.venv/bin/uv run $(BACKEND_DIR)/app.py
+	uv run $(BACKEND_DIR)/app.py
+
+celery-ui:
+	uv run --directory $(BACKEND_DIR) celery -A celery_app flower
 
 frontend:
 	cd $(FRONTEND_DIR) && npm install && npm run dev

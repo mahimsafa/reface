@@ -8,6 +8,7 @@ from basicsr.archs.rrdbnet_arch import RRDBNet
 from facexlib.utils.face_restoration_helper import FaceRestoreHelper
 from realesrgan import RealESRGANer
 
+from core.config import settings
 from modules.face_restore.codeformer_arch import CodeFormer
 
 
@@ -21,12 +22,7 @@ class CodeFormerRestorer(BaseRestorer):
     def __init__(self, fidelity=0.7, upscale=2):
         self.fidelity = fidelity
         self.upscale = upscale
-
-        self.device = (
-            "mps"
-            if torch.backends.mps.is_available()
-            else "cpu"
-        )
+        self.device = settings.DEVICE
 
         self.net = CodeFormer(
             dim_embd=512,

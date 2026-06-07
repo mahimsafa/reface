@@ -104,7 +104,7 @@ export default function ProcessedImagesList() {
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base capitalize">
-                          {record.process_type === "face_swap" ? "Face Swap" : "Face Restore"} #{record.id}
+                          {record.job_type === "face_swap" ? "Face Swap" : "Face Restore"} #{record.id}
                         </CardTitle>
                         <Badge variant={cfg.variant} className="flex items-center gap-1">
                           {cfg.icon}

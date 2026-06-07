@@ -57,7 +57,7 @@ export default function ProcessedImageDetails() {
           </Button>
         </Link>
         <h1 className="text-2xl font-bold tracking-tight capitalize">
-          {data.process_type === "face_swap" ? "Face Swap" : "Face Restore"} #{data.id}
+          {data.job_type === "face_swap" ? "Face Swap" : "Face Restore"} #{data.id}
         </h1>
         <Badge variant={cfg.variant} className="flex items-center gap-1">
           {cfg.icon}
@@ -84,7 +84,7 @@ export default function ProcessedImageDetails() {
       )}
 
       <div className="grid md:grid-cols-3 gap-6">
-        {data.process_type === "face_swap" ? (
+        {data.job_type === "face_swap" ? (
           <>
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Source Image</label>
@@ -154,7 +154,7 @@ export default function ProcessedImageDetails() {
               <span className="text-muted-foreground">Duration:</span>
               <span>{timeTaken(data.created_at, data.finished_at)}</span>
             </div>
-            {data.process_type === "face_swap" && (
+            {data.job_type === "face_swap" && (
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Restore:</span>

@@ -69,7 +69,7 @@ Python 3.11+ project managed with **uv** (`pyproject.toml`, `uv.lock`).
 
 | File | Purpose |
 |------|---------|
-| `app.py` | FastAPI application — mounts routers, CORS, static uploads |
+| `app.py` | FastAPI application — mounts routers, CORS |
 | `celery_app.py` | Celery app configuration (broker, serializers, SSL opts) |
 | `celery_worker.py` | Worker entry script (`uv run celery_worker.py`) |
 | `cli.py` | CLI utilities |
@@ -83,7 +83,7 @@ Python 3.11+ project managed with **uv** (`pyproject.toml`, `uv.lock`).
 |------|---------|
 | `config.py` | Settings from `.env` (DB, Redis, model paths, upload dirs, host/port) |
 | `database.py` | SQLAlchemy engine, session factory, `init_db()` |
-| `models.py` | `ProcessRecord` ORM model (job tracking) |
+| `models.py` | ORM models: `ProcessRecord` (jobs), `StorageRecord`, `JobMetadata`, `JobStorage` |
 | `image_utils.py` | Image validation, directory helpers, BGR conversion |
 
 ### `modules/` — Feature modules (controller → service → tasks)
@@ -113,6 +113,12 @@ modules/<feature>/
 - `GET /api/face-restore/{id}` — Single job detail
 - Uses CodeFormer + RealESRGAN (`codeformer_arch.py`, `vqgan_arch.py` in-module)
 
+**`modules/storage/`**
+
+- `POST /api/storage/upload` — Upload a file with MD5 dedup (returns existing StorageRecord if duplicate)
+- Uses S3Client (boto3) for S3-compatible object storage
+- Storage records deduplicated by MD5 hash of file content
+
 ### `models/` — ML weight files (not committed or large binaries)
 
 Expected artifacts (download separately):
@@ -120,11 +126,13 @@ Expected artifacts (download separately):
 - `inswapper_128.onnx` — Face swap model
 - `codeformer-v0.1.0.pth` — Face restore checkpoint
 
-### `uploads/` — Runtime file storage
+### `uploads/` — Runtime file storage (deprecated)
 
-- `uploads/images/` — Uploaded source/target images
-- `uploads/output/` — Processed results
-- Served statically at `/uploads` by FastAPI
+Files are now stored in S3-compatible object storage. The local `uploads/` directory is no longer used.
+
+- `uploads/images/` — Previously uploaded source/target images (legacy)
+- `uploads/output/` — Previously processed results (legacy)
+- Static file serving at `/uploads` has been removed
 
 ### `gfpgan/` — GFPGAN-related weights
 
@@ -142,6 +150,11 @@ Copy/configure `reface-backend/.env` (see `core/config.py` for keys):
 - `REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND` — Redis connection
 - `MODEL_PATH`, `CODEFORMER_PATH` — Model file locations
 - `HOST`, `PORT` — API bind address (default `0.0.0.0:5000`)
+- `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` — S3 credentials
+- `S3_REGION` — S3 region (default `auto` for R2)
+- `S3_BUCKET_NAME` — S3 bucket name (default `reface`)
+- `S3_PUBLIC_URL` — Public base URL for serving files (optional)
+- `DEVICE` — ML device (`cpu`, `mps`, `cuda`; default `cpu`)
 
 ### Running locally
 
@@ -215,16 +228,16 @@ cd reface-frontend && pnpm install && pnpm dev
 ```
 Browser (reface-frontend)
   │
-  ├─ POST /api/image-processes     → FastAPI saves files, creates ProcessRecord (pending)
+  ├─ POST /api/image-processes     → S3 upload (dedup), creates Job + job_storage (pending)
   ├─ POST /api/queue/process       → FastAPI enqueues Celery task (queued)
   │
   └─ GET  /api/image-processes/:id → Poll until status = completed | failed
 
 Celery worker
   │
-  ├─ face_swap task  → FaceSwapService (InsightFace + Inswapper)
+  ├─ Downloads source/target from S3 → FaceSwapService → uploads result to S3
   ├─ optional restore → CodeFormerRestorer
-  └─ updates ProcessRecord in DB, writes result to uploads/output/
+  └─ Creates StorageRecord + job_storage(role=result), updates Job status
 ```
 
 Face restore follows a similar path but queues immediately on `POST /api/face-restore`.
@@ -261,8 +274,31 @@ Backend and Celery worker service definitions exist but are **commented out**. L
 | API routes | `reface-backend/modules/*/controller.py` |
 | ML logic | `reface-backend/modules/*/service.py` |
 | Background jobs | `reface-backend/modules/*/tasks.py` |
-| DB schema | `reface-backend/core/models.py` |
+| DB schema | `reface-backend/core/models.py` (jobs, storage, job_metadata, job_storage) |
 | Settings | `reface-backend/core/config.py`, `.env` |
 | Frontend pages | `reface-frontend/src/pages/` |
 | HTTP client | `reface-frontend/src/lib/api.ts` |
 | Dev orchestration | `Makefile`, `Taskfile.yml`, `compose.yml` |
+
+### Database migrations (Alembic)
+
+```bash
+# Generate a new migration from model changes
+cd reface-backend && uv run alembic revision --autogenerate -m "description"
+
+# Apply pending migrations
+cd reface-backend && uv run alembic upgrade head
+
+# Rollback one step
+cd reface-backend && uv run alembic downgrade -1
+
+# Check current revision
+cd reface-backend && uv run alembic current
+
+# View migration history
+cd reface-backend && uv run alembic history
+```
+
+- Always review the auto-generated migration before applying
+- Migrations run inside `reface-backend/` directory
+- The `env.py` imports `core.models` so Alembic auto-detects all models that inherit from `Base`

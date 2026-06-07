@@ -1,20 +1,53 @@
 import os
-import uuid
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc
 
 from core.database import get_db
-from core.models import ProcessRecord
-from core.config import settings
-from core.image_utils import ensure_dir, is_valid_extension
-from modules.face_restore.schemas import RestoreRecordResponse, PaginatedRestoreResponse
+from core.models import JobRecord, JobMetadataRecord, StorageRecord, JobStorageRecord
+from core.image_utils import is_valid_extension
+from modules.face_restore.schemas import RestoreJobResponse, PaginatedRestoreResponse
 from modules.face_restore.tasks import process_face_restore_task
+from modules.storage.service import s3_client
 
 router = APIRouter()
 
 
-@router.post("/face-restore", response_model=RestoreRecordResponse, status_code=201)
+def _job_to_response(job: JobRecord, db: Session) -> RestoreJobResponse:
+    meta = db.query(JobMetadataRecord).filter(JobMetadataRecord.job_id == job.id).first()
+    payload = meta.payload if meta else {}
+
+    links = (
+        db.query(JobStorageRecord, StorageRecord)
+        .join(StorageRecord, JobStorageRecord.storage_id == StorageRecord.id)
+        .filter(JobStorageRecord.job_id == job.id, JobStorageRecord.is_deleted == False)
+        .all()
+    )
+
+    source_url = None
+    result_url = None
+
+    for link, st in links:
+        url = s3_client.public_url_for(st.key)
+        if link.role == "source":
+            source_url = url
+        elif link.role == "result":
+            result_url = url
+
+    return RestoreJobResponse(
+        id=job.id,
+        job_type=job.job_type,
+        status=job.status,
+        error_message=job.error_message,
+        created_at=job.created_at,
+        finished_at=job.finished_at,
+        metadata=payload,
+        source_image=source_url,
+        result_image=result_url,
+    )
+
+
+@router.post("/face-restore", response_model=RestoreJobResponse, status_code=201)
 async def create_face_restore(
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -22,43 +55,55 @@ async def create_face_restore(
     if not is_valid_extension(image.filename):
         raise HTTPException(400, "Only JPG, JPEG, PNG, and WEBP files are allowed")
 
-    ensure_dir(settings.IMAGES_DIR)
+    data = await image.read()
+    md5 = s3_client.md5_hash(data)
 
-    ext = os.path.splitext(image.filename)[1]
-    img_name = f"{uuid.uuid4().hex}{ext}"
-    img_path = os.path.join(settings.IMAGES_DIR, img_name)
+    existing = db.query(StorageRecord).filter(StorageRecord.md5_hash == md5).first()
+    if existing:
+        src_storage = existing
+    else:
+        ext = os.path.splitext(image.filename)[1].lower()
+        key = s3_client.generate_key(ext)
+        s3_client.upload_bytes(data, key, "image/jpeg")
+        src_storage = StorageRecord(
+            key=key,
+            original_filename=image.filename,
+            content_type="image",
+            file_type="image/jpeg",
+            file_size=len(data),
+            md5_hash=md5,
+        )
+        db.add(src_storage)
+        db.commit()
+        db.refresh(src_storage)
 
-    content = await image.read()
-    with open(img_path, "wb") as f:
-        f.write(content)
-
-    record = ProcessRecord(
-        process_type="face_restore",
-        status="pending",
-        source_image=img_path,
-    )
-    db.add(record)
+    job = JobRecord(job_type="face_restore", status="pending")
+    db.add(job)
     db.commit()
-    db.refresh(record)
+    db.refresh(job)
 
-    process_face_restore_task.delay(
-        process_id=record.id,
-        source_path=record.source_image,
-    )
+    meta = JobMetadataRecord(job_id=job.id, payload={})
+    db.add(meta)
 
-    return record
+    link = JobStorageRecord(job_id=job.id, storage_id=src_storage.id, role="source")
+    db.add(link)
+    db.commit()
+
+    process_face_restore_task.delay(process_id=job.id)
+
+    return _job_to_response(job, db)
 
 
-@router.get("/face-restore/{process_id}", response_model=RestoreRecordResponse)
+@router.get("/face-restore/{process_id}", response_model=RestoreJobResponse)
 async def get_restore_process(process_id: int, db: Session = Depends(get_db)):
-    record = (
-        db.query(ProcessRecord)
-        .filter(ProcessRecord.id == process_id, ProcessRecord.process_type == "face_restore")
+    job = (
+        db.query(JobRecord)
+        .filter(JobRecord.id == process_id, JobRecord.job_type == "face_restore")
         .first()
     )
-    if not record:
+    if not job:
         raise HTTPException(404, "Restore process not found")
-    return record
+    return _job_to_response(job, db)
 
 
 @router.get("/face-restore", response_model=PaginatedRestoreResponse)
@@ -70,13 +115,13 @@ async def list_restore_processes(
     sort_order: str = Query("desc", pattern=r"^(asc|desc)$"),
     db: Session = Depends(get_db),
 ):
-    q = db.query(ProcessRecord).filter(ProcessRecord.process_type == "face_restore")
+    q = db.query(JobRecord).filter(JobRecord.job_type == "face_restore")
     if status:
-        q = q.filter(ProcessRecord.status == status)
+        q = q.filter(JobRecord.status == status)
 
     total = q.count()
     order_fn = desc if sort_order == "desc" else asc
-    column = getattr(ProcessRecord, sort_by)
+    column = getattr(JobRecord, sort_by)
     items = q.order_by(order_fn(column)).offset(skip).limit(limit).all()
 
-    return {"items": items, "total": total}
+    return {"items": [_job_to_response(j, db) for j in items], "total": total}

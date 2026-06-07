@@ -1,6 +1,6 @@
 export interface ProcessRecord {
   id: number;
-  process_type: string;
+  job_type: string;
   status: string;
   source_image: string | null;
   target_image: string | null;

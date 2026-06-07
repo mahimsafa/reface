@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from core.config import settings
 from modules.face_swap.controller import router as face_swap_router
 from modules.face_restore.controller import router as face_restore_router
+from modules.storage.controller import router as storage_router
 
 
 @asynccontextmanager
@@ -30,10 +30,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
 app.include_router(face_swap_router, prefix="/api")
 app.include_router(face_restore_router, prefix="/api")
+app.include_router(storage_router, prefix="/api")
 
 
 @app.get("/")

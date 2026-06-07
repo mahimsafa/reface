@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, Clock, CheckCircle2, XCircle, Loader2, Hash, Calendar, Sparkles } from "lucide-react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { ArrowLeft, Clock, CheckCircle2, XCircle, Loader2, Hash, Calendar, Sparkles, RotateCw } from "lucide-react"
 import { api } from "../lib/api"
 import { formatDate, timeTaken } from "../lib/utils"
 import { Button } from "../components/ui/button"
@@ -17,6 +17,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 
 export default function ProcessedImageDetails() {
   const { id } = useParams<{ id: string }>()
+  const queryClient = useQueryClient()
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["processedImage", id],
@@ -25,6 +26,18 @@ export default function ProcessedImageDetails() {
     refetchInterval: (query) => {
       const state = query.state.data
       return state && (state.status === "pending" || state.status === "queued" || state.status === "processing") ? 3000 : false
+    },
+  })
+
+  const retryMutation = useMutation({
+    mutationFn: () => {
+      if (!data) throw new Error("No data")
+      return data.job_type === "face_swap"
+        ? api.retryProcess(data.id)
+        : api.retryRestore(data.id)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["processedImage", id] })
     },
   })
 
@@ -46,7 +59,9 @@ export default function ProcessedImageDetails() {
     )
   }
 
+  const canRetry = data.status === "completed" || data.status === "failed"
   const cfg = statusConfig[data.status] || { label: data.status, variant: "outline" as const, icon: null }
+  const pastResults = data.result_images.length > 1 ? data.result_images.slice(1) : []
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -63,6 +78,18 @@ export default function ProcessedImageDetails() {
           {cfg.icon}
           {cfg.label}
         </Badge>
+        {canRetry && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 ml-auto"
+            onClick={() => retryMutation.mutate()}
+            disabled={retryMutation.isPending}
+          >
+            <RotateCw className={`w-4 h-4 ${retryMutation.isPending ? "animate-spin" : ""}`} />
+            {retryMutation.isPending ? "Retrying..." : "Retry"}
+          </Button>
+        )}
       </div>
 
       {data.status === "processing" && (
@@ -132,6 +159,19 @@ export default function ProcessedImageDetails() {
           </div>
         </div>
       </div>
+
+      {pastResults.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold tracking-tight">Previous Results ({pastResults.length})</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {pastResults.map((url, i) => (
+              <div key={i} className="aspect-square rounded-lg overflow-hidden border bg-muted">
+                <img src={api.getImageUrl(url)} alt={`Previous result ${i + 1}`} className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

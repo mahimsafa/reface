@@ -21,18 +21,22 @@ def _job_to_response(job: JobRecord, db: Session) -> RestoreJobResponse:
         db.query(JobStorageRecord, StorageRecord)
         .join(StorageRecord, JobStorageRecord.storage_id == StorageRecord.id)
         .filter(JobStorageRecord.job_id == job.id, JobStorageRecord.is_deleted == False)
+        .order_by(JobStorageRecord.created_at.desc())
         .all()
     )
 
     source_url = None
     result_url = None
+    result_urls = []
 
     for link, st in links:
         url = s3_client.public_url_for(st.key)
         if link.role == "source":
             source_url = url
         elif link.role == "result":
-            result_url = url
+            if result_url is None:
+                result_url = url
+            result_urls.append(url)
 
     return RestoreJobResponse(
         id=job.id,
@@ -44,6 +48,7 @@ def _job_to_response(job: JobRecord, db: Session) -> RestoreJobResponse:
         metadata=payload,
         source_image=source_url,
         result_image=result_url,
+        result_images=result_urls,
     )
 
 
@@ -103,6 +108,28 @@ async def get_restore_process(process_id: int, db: Session = Depends(get_db)):
     )
     if not job:
         raise HTTPException(404, "Restore process not found")
+    return _job_to_response(job, db)
+
+
+@router.post("/face-restore/{process_id}/retry", response_model=RestoreJobResponse, status_code=202)
+async def retry_restore_process(process_id: int, db: Session = Depends(get_db)):
+    job = (
+        db.query(JobRecord)
+        .filter(JobRecord.id == process_id, JobRecord.job_type == "face_restore")
+        .first()
+    )
+    if not job:
+        raise HTTPException(404, "Restore process not found")
+    if job.status not in ("completed", "failed"):
+        raise HTTPException(400, f"Cannot retry process in '{job.status}' state")
+
+    job.status = "queued"
+    job.error_message = None
+    job.finished_at = None
+    db.commit()
+
+    process_face_restore_task.delay(process_id=job.id)
+
     return _job_to_response(job, db)
 
 

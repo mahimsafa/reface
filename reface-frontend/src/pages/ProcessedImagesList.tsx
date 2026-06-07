@@ -100,7 +100,7 @@ export default function ProcessedImagesList() {
               const cfg = statusConfig[record.status] || { label: record.status, variant: "outline" as const, icon: null }
               return (
                 <Link key={record.id} to={`/processed/${record.id}`}>
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer h-full overflow-hidden">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base capitalize">
@@ -113,28 +113,19 @@ export default function ProcessedImagesList() {
                       </div>
                       <CardDescription>{formatDate(record.created_at)}</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 gap-2 h-24">
-                        {record.source_image && (
-                          <img
-                            src={api.getImageUrl(record.source_image)}
-                            alt="Source"
-                            className="w-full h-full object-cover rounded"
-                          />
-                        )}
-                        {record.target_image && (
-                          <img
-                            src={api.getImageUrl(record.target_image)}
-                            alt="Target"
-                            className="w-full h-full object-cover rounded"
-                          />
-                        )}
-                        {record.result_image && (
+                    <CardContent className="p-0">
+                      <div className="aspect-[3/2] overflow-hidden">
+                        {record.result_image ? (
                           <img
                             src={api.getImageUrl(record.result_image)}
                             alt="Result"
-                            className="w-full h-full object-cover rounded col-span-2"
+                            className="w-full h-full object-cover transition-transform hover:scale-105"
                           />
+                        ) : (
+                          <div className="w-full h-full bg-muted flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                            {cfg.icon && <span className="[&>svg]:w-6 [&>svg]:h-6">{cfg.icon}</span>}
+                            <span className="text-sm capitalize">{cfg.label}</span>
+                          </div>
                         )}
                       </div>
                     </CardContent>

@@ -21,12 +21,14 @@ def _job_to_response(job: JobRecord, db: Session) -> JobResponse:
         db.query(JobStorageRecord, StorageRecord)
         .join(StorageRecord, JobStorageRecord.storage_id == StorageRecord.id)
         .filter(JobStorageRecord.job_id == job.id, JobStorageRecord.is_deleted == False)
+        .order_by(JobStorageRecord.created_at.desc())
         .all()
     )
 
     source_url = None
     target_url = None
     result_url = None
+    result_urls = []
 
     for link, st in storage_links:
         url = s3_client.public_url_for(st.key)
@@ -35,7 +37,9 @@ def _job_to_response(job: JobRecord, db: Session) -> JobResponse:
         elif link.role == "target":
             target_url = url
         elif link.role == "result":
-            result_url = url
+            if result_url is None:
+                result_url = url
+            result_urls.append(url)
 
     return JobResponse(
         id=job.id,
@@ -48,6 +52,7 @@ def _job_to_response(job: JobRecord, db: Session) -> JobResponse:
         source_image=source_url,
         target_image=target_url,
         result_image=result_url,
+        result_images=result_urls,
         restore_enabled=payload.get("restore_enabled", False),
     )
 
@@ -170,4 +175,22 @@ async def get_process(process_id: int, db: Session = Depends(get_db)):
     job = db.query(JobRecord).filter(JobRecord.id == process_id).first()
     if not job:
         raise HTTPException(404, "Process not found")
+    return _job_to_response(job, db)
+
+
+@router.post("/image-processes/{process_id}/retry", response_model=JobResponse, status_code=202)
+async def retry_process(process_id: int, db: Session = Depends(get_db)):
+    job = db.query(JobRecord).filter(JobRecord.id == process_id).first()
+    if not job:
+        raise HTTPException(404, "Process not found")
+    if job.status not in ("completed", "failed"):
+        raise HTTPException(400, f"Cannot retry process in '{job.status}' state")
+
+    job.status = "queued"
+    job.error_message = None
+    job.finished_at = None
+    db.commit()
+
+    process_face_swap_task.delay(process_id=job.id)
+
     return _job_to_response(job, db)

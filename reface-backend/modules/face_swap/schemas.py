@@ -14,6 +14,7 @@ class JobResponse(BaseModel):
     source_image: Optional[str] = None
     target_image: Optional[str] = None
     result_image: Optional[str] = None
+    result_images: list[str] = []
     restore_enabled: bool = False
 
     model_config = {"from_attributes": True}

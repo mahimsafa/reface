@@ -13,6 +13,7 @@ class RestoreJobResponse(BaseModel):
     metadata: Optional[dict] = None
     source_image: Optional[str] = None
     result_image: Optional[str] = None
+    result_images: list[str] = []
 
     model_config = {"from_attributes": True}
 

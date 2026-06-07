@@ -1,3 +1,4 @@
+import time
 from celery_app import celery_app
 from core.database import SessionLocal
 from core.models import JobRecord, JobMetadataRecord, StorageRecord, JobStorageRecord
@@ -37,7 +38,8 @@ def process_face_restore_task(self, process_id: int):
         result = restorer.restore_face(source_img)
 
         result_bytes = image_to_bytes(result)
-        result_key = f"output/restored_{process_id}.jpg"
+        ts = int(time.time())
+        result_key = f"output/restored_{process_id}/{ts}.jpg"
 
         s3_client.upload_bytes(result_bytes, result_key, "image/jpeg")
 

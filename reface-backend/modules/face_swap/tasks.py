@@ -1,3 +1,4 @@
+import time
 from celery_app import celery_app
 from core.config import settings
 from core.database import SessionLocal
@@ -64,7 +65,8 @@ def process_face_swap_task(self, process_id: int):
 
         result_bytes = image_to_bytes(result)
         ext = ".jpg"
-        result_key = f"output/{process_id}{ext}"
+        ts = int(time.time())
+        result_key = f"output/{process_id}/{ts}{ext}"
 
         s3_client.upload_bytes(result_bytes, result_key, "image/jpeg")
 

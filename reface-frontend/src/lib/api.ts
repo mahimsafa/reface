@@ -46,6 +46,14 @@ export const api = {
     return request(`/api/image-processes/${id}`);
   },
 
+  async retryProcess(processId: number): Promise<ProcessRecord> {
+    return request(`/api/image-processes/${processId}/retry`, { method: "POST" });
+  },
+
+  async retryRestore(processId: number): Promise<ProcessRecord> {
+    return request(`/api/face-restore/${processId}/retry`, { method: "POST" });
+  },
+
   async uploadRestore(data: FormData): Promise<ProcessRecord> {
     return request("/api/face-restore", { method: "POST", body: data });
   },
